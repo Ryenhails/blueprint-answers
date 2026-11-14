@@ -98,7 +98,7 @@ def panel(d, box, fill=PANEL, outline=LINE, r=10, width=2):
 
 def load_static(path):
     h = open(path, encoding="utf-8").read()
-    i, j = h.index("const STATIC = ") + 15, h.index(";\nconst $ =")
+    i, j = h.index("const STATIC = ") + 15, h.index(";\nconst LIVE" if ";\nconst LIVE" in h else ";\nconst $ =")
     return json.loads(h[i:j].replace("<\\/", "</"))
 
 

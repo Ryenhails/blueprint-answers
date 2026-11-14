@@ -184,7 +184,10 @@ def ask(path, question):
         if e.get("poly"):
             e["poly"] = [[round(float(x), 2), round(float(y), 2)] for x, y in e["poly"]]
     gpath = SCAN[:-4] + ".pdf" if path == SCAN else path
-    gold = next((x for x in questions_for(gpath, 10 ** 6) if x["q"] == question), None)
+    try:
+        gold = next((x for x in questions_for(gpath, 10 ** 6) if x["q"] == question), None)
+    except OSError:  # the dataset is not on this machine (hosted demo): no reference answers
+        gold = None
     path = gpath
     if gold is None and _q is not None:
         gold = next(({"gold": r["answer"], "type": r["type"]} for r in _q.get(path, []) if r["question"] == question), None)
@@ -251,7 +254,7 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         try:
             if u.path == "/":
-                self._send(page_html(None), "text/html; charset=utf-8")
+                self._send(page_html(HOSTED, live=HOSTED is not None), "text/html; charset=utf-8")
             elif u.path == "/api/examples":
                 self._send(json.dumps(examples(), ensure_ascii=False))
             elif u.path == "/api/validation":
@@ -264,6 +267,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(json.dumps({"error": repr(e)}), code=500)
 
     def do_POST(self):
+        if ACCESS_CODE and self.headers.get("X-Access-Code", "") != ACCESS_CODE:
+            self._send(json.dumps({"error": "Enter the access code (it is in the submission notes) to upload or ask live.", "answer": None}), code=200)
+            return
+        if SPENT[0] >= BUDGET:
+            self._send(json.dumps({"error": "This demo has used up its API budget for now. The stored examples still work.", "answer": None}), code=200)
+            return
         if self.path.startswith("/api/upload"):
             try:
                 self._send(json.dumps(upload(self.headers.get("X-Filename", "upload"), self.rfile.read(int(self.headers.get("Content-Length", 0)))), ensure_ascii=False))
@@ -272,7 +281,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
-            self._send(json.dumps(ask(body["path"], body["question"]), ensure_ascii=False))
+            if HOSTED is not None and not (_updir and os.path.realpath(str(body["path"])).startswith(os.path.realpath(_updir) + os.sep)):
+                raise ValueError("live questions are answered for uploaded drawings")
+            res = ask(body["path"], body["question"])
+            SPENT[0] += res.get("cost_usd") or 0
+            self._send(json.dumps(res, ensure_ascii=False))
         except Exception as e:
             self._send(json.dumps({"error": repr(e)}), code=500)
 
@@ -286,11 +299,19 @@ def validation():
         return None
 
 
-def page_html(static):
+HOSTED = None  # hosted mode: the examples of an exported page (stored answers) plus live answers for uploads
+ACCESS_CODE = os.environ.get("STOA_ACCESS_CODE", "")
+BUDGET = float(os.environ.get("STOA_BUDGET_USD", "25"))  # the server stops calling models after this much API spend
+SPENT = [0.0]
+
+
+def page_html(static, live=False):
     html = open(os.path.join(HERE, "demo.html"), encoding="utf-8").read()
     payload = "null" if static is None else json.dumps(static, ensure_ascii=False).replace("</", "<\\/")
     html = html.replace("/*__STATIC__*/null", payload)
-    if static is None:  # served locally: needs a full document
+    if live:
+        html = html.replace("/*__LIVE__*/false", "true").replace("/*__CODE__*/false", "true" if ACCESS_CODE else "false")
+    if static is None or live:  # served by this program: needs a full document
         html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'></head><body>" + html + "</body></html>"
     return html
 
@@ -301,7 +322,7 @@ def export(out):
     old = {}
     if "--reuse" in sys.argv:  # keep the answers of an earlier export (they cost API calls); only missing or empty ones are asked again
         h = open(sys.argv[sys.argv.index("--reuse") + 1], encoding="utf-8").read()
-        i, j = h.index("const STATIC = ") + 15, h.index(";\nconst $ =")
+        i, j = h.index("const STATIC = ") + 15, h.index(";\nconst LIVE" if ";\nconst LIVE" in h else ";\nconst $ =")
         old = {k: v for k, v in json.loads(h[i:j].replace("<\\/", "</"))["answers"].items() if v.get("answer") is not None and v.get("trace")}
     for e in ex:
         static["drawings"][e["path"]] = drawing(e["path"], width=1500)
@@ -336,8 +357,14 @@ if __name__ == "__main__":
                 BACKENDS["raster"] = raster_backend.answer
             except Exception:
                 pass
-        print("demo on http://localhost:%d  (Ctrl-C to stop)" % port)
-        ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+        host = "127.0.0.1"
+        if "--hosted" in a:  # python demo_server.py serve --gemini --hosted docs/index.html : public server for judges
+            h = open(a[a.index("--hosted") + 1], encoding="utf-8").read()
+            i, j = h.index("const STATIC = ") + 15, h.index(";\nconst LIVE")
+            HOSTED = json.loads(h[i:j].replace("<\\/", "</"))
+            host, port = "0.0.0.0", int(os.environ.get("PORT", port))
+        print("demo on http://%s:%d  (Ctrl-C to stop)" % (host, port), flush=True)
+        ThreadingHTTPServer((host, port), Handler).serve_forever()
     elif a[:1] == ["export"] and len(a) >= 2:
         WITH_ORGANISER = "--with-organiser" in a
         if "--gemini" in a:

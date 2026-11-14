@@ -178,7 +178,7 @@ def known_kind(question):
     global _known
     if _known is None:
         _known = {}
-        for r in evalkit.load_questions():
+        for r in (evalkit.load_questions() if os.path.exists(os.path.join(evalkit.DATA, "questions.jsonl")) else []):
             if r["path"].startswith("data/cubicasa5k/"):
                 _known.setdefault(" ".join(r["question"].lower().split()), raster_backend.question_kind(r["question"]))
     return _known.get(" ".join(question.lower().split()))

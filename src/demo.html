@@ -150,7 +150,7 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
   <section class="panel" aria-label="Drawings and questions">
     <h2>Drawings, by how they are read</h2>
     <div class="sheets" id="sheets"></div>
-    <div class="upload" id="uploadbox"><label for="upfile"><b>Your own drawing</b></label><input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc"><small id="upmsg">PDF (any number of sheets), a scan or image, or an IFC model.</small></div>
+    <div class="upload" id="uploadbox"><label for="upfile"><b>Your own drawing</b></label><input id="code" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code" hidden><input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc"><small id="upmsg">PDF (any number of sheets), a scan or image, or an IFC model.</small></div>
     <h2>Example questions</h2>
     <div class="qs" id="qs"></div>
   </section>
@@ -209,6 +209,8 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
 
 <script>
 const STATIC = /*__STATIC__*/null;
+const LIVE = /*__LIVE__*/false;       // a server is behind this page: uploads and new questions are answered live
+const NEEDS_CODE = /*__CODE__*/false; // the server asks for an access code before it spends API money
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const ROUTE = { swiss: "Vector plan", ifc: "BIM model", table: "Sheet PDF", raster: "Image or scan", unknown: "Other" };
@@ -218,13 +220,17 @@ const STEPS = ["Known question form", "Decision model", "Model writes code on th
 const OLD_LEVEL = { cache: 0, keyword: 0, ingested: 0, llm: 1, code: 2, vision: 3 };
 let examples = [], cur = null, view = null, home = null, svgEl = null, hidden = new Set(), lastRes = null;
 
+const live = !STATIC || LIVE;
+const headers = () => NEEDS_CODE ? { "X-Access-Code": $("code").value.trim() } : {};
 const api = {
   examples: async () => STATIC ? STATIC.examples : (await fetch("/api/examples")).json(),
-  drawing: async p => STATIC ? STATIC.drawings[p] : (await fetch("/api/drawing?path=" + encodeURIComponent(p))).json(),
+  drawing: async p => STATIC && STATIC.drawings[p] ? STATIC.drawings[p] : (await fetch("/api/drawing?path=" + encodeURIComponent(p))).json(),
   validation: async () => STATIC ? STATIC.validation : (await fetch("/api/validation")).json(),
   ask: async (p, q) => {
-    if (STATIC) return STATIC.answers[p + "\n" + q] || { answer: null, note: "This published copy holds the listed questions only. Run the live demo (see the repository) to ask anything or upload a drawing." };
-    return (await fetch("/", { method: "POST", body: JSON.stringify({ path: p, question: q }) })).json();
+    if (STATIC && STATIC.answers[p + "\n" + q]) return STATIC.answers[p + "\n" + q];
+    if (!live) return { answer: null, note: "This published copy holds the listed questions only. Open the live demo (see the repository) to ask anything or upload a drawing." };
+    if (STATIC && STATIC.drawings[p]) return { answer: null, note: "The example drawings come with stored answers for the listed questions. Upload a drawing to ask free questions live." };
+    return (await fetch("/", { method: "POST", headers: headers(), body: JSON.stringify({ path: p, question: q }) })).json();
   },
 };
 
@@ -404,12 +410,13 @@ function addSheet(ex) {
   grp.appendChild(b);
   return b;
 }
-if (STATIC) { $("upfile").disabled = true; $("upmsg").textContent = "Upload works in the live demo (see the repository); this published copy shows stored answers."; }
+if (!live) { $("upfile").disabled = true; $("upmsg").textContent = "Upload works in the live demo (see the repository); this published copy shows stored answers."; }
+$("code").hidden = !NEEDS_CODE;
 $("upfile").addEventListener("change", async e => {
   const f = e.target.files[0]; if (!f) return;
   $("upmsg").textContent = "Uploading…";
   try {
-    const ex = await (await fetch("/api/upload", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name) }, body: f })).json();
+    const ex = await (await fetch("/api/upload", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name), ...headers() }, body: f })).json();
     if (ex.error) { $("upmsg").textContent = ex.error; return; }
     $("upmsg").textContent = "Loaded. Type a question above the drawing.";
     examples.push(ex); addSheet(ex).click(); $("question").focus();

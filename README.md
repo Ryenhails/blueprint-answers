@@ -5,6 +5,7 @@
 Entry for the Stoa challenge "Make Blueprints Talk", Junction 2026.
 
 - Demo (stored answers, runs in the browser): https://ryenhails.github.io/blueprint-answers/
+- Live demo with upload (access code in the submission notes): <!--LIVE-->
 - Two-minute video: <!--VIDEO-->
 
 ## The idea
@@ -85,6 +86,7 @@ export GEMINI_API_KEY=...            # or put the key in api.txt (git-ignored)
 export STOA_DATA=/path/to/junction-dataset   # the challenge dataset; default data/junction-dataset
 
 python src/demo_server.py serve --gemini     # http://localhost:8765 : pick an example or upload a PDF, image or IFC
+# hosting it for others (Docker, Hugging Face Space): see deploy/README.md
 python src/system.py ask <file> "<question>" # one answer as JSON
 ```
 
