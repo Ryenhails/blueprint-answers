@@ -210,6 +210,7 @@ def summary():
         if rs:
             out["groups"].append(dict(cell(rs, title), key=g))
     unseen = [r for r in rows if r["group"] != "schedules"]
+    out["unseen"] = len(unseen)
     out["all"] = cell([r for r in unseen if r["type"] != "text"], "All unseen numeric questions")
     for name, key, where in (("types", lambda r: r["type"], unseen), ("langs", lambda r: r["lang"], [r for r in unseen if r["type"] != "text"]),
                              ("scans", lambda r: r["form"], [r for r in rows if r["group"] == "scans"])):

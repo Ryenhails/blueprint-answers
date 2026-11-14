@@ -463,7 +463,7 @@ def scene_valid(st):
 
     def f(t, T):
         im, d = frame()
-        header(d, "Validation", "%d questions the system was not built on" % v.get("total", 0))
+        header(d, "Validation", "%d questions the system was not built on" % sum(g["n"] for g in groups))
         al = v.get("all", {"ok": 0, "numeric": 1, "usd": 0})
         tiles = [("%.1f%%" % (100 * al["ok"] / max(1, al["numeric"])), "of %d numeric answers correct" % al["numeric"]),
                  ("$%.3f" % al["usd"], "average API cost per question"), ("%d" % len(groups), "kinds of drawings, one interface")]
@@ -478,7 +478,7 @@ def scene_valid(st):
                 break
             k = ease((t - 1.5 - i * 0.9) * 1.6)
             d.text((90, y + 6), g["label"], font=font(27, True), fill=INK)
-            x0, x1 = 640, 1400
+            x0, x1 = 640, 1330
             d.rectangle([x0, y + 4, x1, y + 44], fill=PANEL, outline=LINE, width=2)
             tx = g.get("text") or {}
             nt = sum(tx.get(a, 0) for a in ("correct", "partial", "wrong"))
@@ -490,7 +490,7 @@ def scene_valid(st):
                 c, p = tx.get("correct", 0) / nt, tx.get("partial", 0) / nt
                 d.rectangle([x0, y + 4, x0 + (x1 - x0) * c * k, y + 44], fill=GREEN)
                 d.rectangle([x0 + (x1 - x0) * c * k, y + 4, x0 + (x1 - x0) * (c + p) * k, y + 44], fill=(200, 140, 20))
-                lab = "%d correct, %d partial of %d (model-graded)" % (tx.get("correct", 0), tx.get("partial", 0), nt)
+                lab = "%d right, %d partly, of %d" % (tx.get("correct", 0), tx.get("partial", 0), nt)
             else:
                 lab = ""
             d.text((x1 + 24, y + 8), lab, font=font(24, mono=True), fill=INK)
@@ -528,7 +528,7 @@ def validation_line(st):
     cents = al["usd"] * 100
     return ("On %d questions it was not built on, %d percent of numeric answers are correct, at about %s a question. "
             "Vector plans and building models are near perfect. Images reach %s, scans %s. We show the hard numbers too."
-            % (v.get("total", 0), round(100 * al["ok"] / max(1, al["numeric"])), ("%.1f cents" % cents) if cents >= 0.1 else "a tenth of a cent", pc("images"), pc("scans")))
+            % (sum(x["n"] for x in v.get("groups", []) if x["key"] != "schedules"), round(100 * al["ok"] / max(1, al["numeric"])), ("%.1f cents" % cents) if cents >= 0.1 else "a tenth of a cent", pc("images"), pc("scans")))
 
 
 def speak(text, out_wav):
@@ -629,8 +629,8 @@ def scene_limits(st):
     rows = [("Cost", "Known question forms cost nothing. A new phrasing costs about $0.0004, generated code $0.01–0.06, reading a scanned sheet $0.01–0.20. Reading a drawing in is a few cents at most."),
             ("What is exact", "Vector plans and building models: computed from the file's own geometry and quantities."),
             ("What is approximate", "Images and scans. Answers say so, show every counted box and measured region, and flag when two independent readings disagree."),
-            ("Known weak spots", "Doors on scans are undercounted by 15–20%. Sums over many rooms on a scan are unstable. The vector parser is tied to this dataset's drawing style."),
-            ("Not checked by people", "Open BIM answers were graded by a model against the reference answers.")]
+            ("Known weak spots", "Doors on scans are undercounted by 10–35% on every drawing. Sums over many rooms on a scan are unstable. The vector parser is tied to this dataset's drawing style."),
+            ("Graded by a model", "Open BIM answers were graded by a model against the reference answers.")]
 
     def f(t, T):
         im, d = frame()

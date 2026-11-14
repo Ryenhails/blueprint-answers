@@ -436,7 +436,7 @@ async function showValidation() {
   const LANG = { en: "English", de: "German", fr: "French", it: "Italian", fi: "Finnish", nl: "Dutch", da: "Danish", es: "Spanish", et: "Estonian", other: "other" };
   v.langs.forEach(c => c.label = LANG[c.label] || c.label);
   el.innerHTML = `<h3>Validation on questions the system was not built on</h3>
-    <p class="lead">${v.total} questions with reference answers from the challenge dataset, drawn with a fixed seed. None of them is in the 500-question set used during development, the floor-plan images are from the official CubiCasa5K test split that the detector never saw, and the scans are drawings that were not used while the measuring step was tuned. ${v.answered < v.total ? `<b>${v.answered} of ${v.total} answered so far.</b>` : ""}</p>
+    <p class="lead">${v.total} questions with reference answers from the challenge dataset, drawn with a fixed seed. ${v.unseen || ""} of them were never used while the system was built: they are not in the 500-question development set, the floor-plan images are from the official CubiCasa5K test split that the detector never saw, and the scans are drawings that were not used while the measuring step was tuned. ${v.answered < v.total ? `<b>${v.answered} of ${v.total} answered so far.</b>` : ""}</p>
     <div class="stat">
       <div class="tile"><b>${pct(v.all.ok, v.all.numeric)}</b><span>of ${v.all.numeric} unseen numeric questions correct (counts exact, sizes within 2%)</span></div>
       <div class="tile"><b>${money(v.all.usd)}</b><span>average API cost per numeric question</span></div>
