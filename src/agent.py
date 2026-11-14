@@ -93,7 +93,7 @@ Variables available to your code:
 - fixtures: list of dicts with id, type ("toilet", "washbasin", "bathtub", "shower"), room
 - apartments: list of apartment letters
 - math, re
-The fields above are those of a vector plan. A plan that came as an image has the same tables with these differences: rooms carry type ("bedroom", "kitchen", "bathroom", "wc", "sauna", "balcony", "living", "hall", "storage", "utility", "outdoor", "other") and floor; fixture counts per room are toilets, sinks, showers_baths; area_m2 is only what is printed in the room (often None); there is no apartment, number, width, length or perimeter. Always use the fields that are actually present in the data you are given.
+The fields above are those of a vector plan. A plan read from a scanned sheet has the same fields plus type and area_source: an area is either printed on the sheet or measured by code (rooms open to each other without a line between them were cut halfway, which area_source says); doors also have leaves (2 = a double door, which is one door). A small plan image has the same tables with these differences: rooms carry type ("bedroom", "kitchen", "bathroom", "wc", "sauna", "balcony", "living", "hall", "storage", "utility", "outdoor", "other") and floor; fixture counts per room are toilets, sinks, showers_baths; area_m2 is only what is printed in the room (often None); there is no apartment, number, width, length or perimeter. Always use the fields that are actually present in the data you are given.
 
 Your code must set:
 - answer: a number or a short string. Use None if the tables cannot answer the question (for example heights, materials, prices, orientation, anything not listed above).
@@ -103,6 +103,7 @@ Your code must set:
 
 Rules:
 - Room labels are in the plan's language (German, French, Italian or English), whatever the language of the question. Match the meaning: a question about bathrooms on a German plan means labels such as "Bad", "Dusche", "Bad/WC". Decide which of the labels that actually occur fit, and list them explicitly in the code.
+- "Indoor rooms" of a whole floor means every room that is not outdoor: rooms of kind "circulation" (stairs, corridors) count as indoor.
 - Living area of an apartment means its indoor rooms; balconies and other outdoor rooms are excluded unless the question includes them.
 - Never invent data. No imports, no file access, no printing.
 - Reply with one ```python block and nothing else."""
@@ -113,7 +114,7 @@ def describe(tables):
     if tables.get("floors"):
         L.append("Floors shown on the sheet: %s" % tables["floors"])
     if "readers" in tables:
-        L.append("DATA QUALITY: read from an image by detectors and a vision model. Counts and room assignments are approximate; areas are only those printed on the plan.")
+        L.append("DATA QUALITY: read from an image by detectors and a vision model. Counts and room assignments are approximate; areas are those printed on the plan or, on a scanned sheet, measured by code (see area_source).")
     L.append("Labels that occur: " + json.dumps(sorted({r["label"] for r in tables["rooms"] if r["label"]}), ensure_ascii=False))
     L.append("rooms = [")
     for r in tables["rooms"]:

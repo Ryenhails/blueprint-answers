@@ -199,6 +199,75 @@ def ask(path, question):
     return json.loads(json.dumps(res, ensure_ascii=False, default=str))
 
 
+def facts(path):
+    """What the system read from a drawing, as tables for the page: groups of rows, each row with its place on the sheet.
+    Reads the drawing now if it has not been read yet (this is the one-time ingestion)."""
+    full = _full(path)
+    kind = system.kind_of(path)
+    out = {"kind": kind, "summary": [], "groups": [], "note": "", "cost_usd": 0.0}
+
+    def rows_of(items, cells, geo, limit=400):
+        return [{"cells": cells(x), "bbox": (geo.get(x["id"]) or {}).get("bbox"), "poly": (geo.get(x["id"]) or {}).get("poly")} for x in items[:limit]]
+
+    if kind == "ifc":
+        import ifc_agent
+
+        t = ifc_agent.tables_for(ifc_adapter.model_path(full) if not full.lower().endswith(".ifc") else full)
+        by = collections.Counter(r["class"] for r in t["elements"])
+        out["summary"] = [["elements", len(t["elements"])], ["storeys", len(t["model"]["storeys"])], ["classes", len(by)]]
+        out["note"] = "Building model: every element is one row with its storey, type, materials, quantities and properties. Exact."
+        out["groups"] = [{"name": "Elements by class", "columns": ["class", "elements"], "rows": [{"cells": [k, v]} for k, v in by.most_common(40)]},
+                         {"name": "Storeys", "columns": ["storey", "elevation m"], "rows": [{"cells": [s["name"], s["elevation_m"]]} for s in t["model"]["storeys"]]}]
+        return out
+    if kind == "table":
+        import table_adapter
+
+        raw = table_adapter.parse(full)
+        ts = table_adapter.structured(raw)
+        out["summary"] = [["tables", len(ts)], ["rows", sum(len(t["rows"]) for t in ts)]]
+        out["note"] = "Schedules lifted from the PDF's text layer. Exact text; anything drawn on the sheet is read per question." if ts else "No schedules on this sheet: it is read per question, with code measuring and counting."
+        for ti, t in enumerate(ts[:12]):
+            bbs = raw["tables"][ti].get("row_bboxes", [])
+            out["groups"].append({"name": (t.get("title") or "Table %d" % (ti + 1))[:60], "columns": [str(c)[:22] for c in t["columns"][:8]],
+                                  "rows": [{"cells": [str(r.get(c, ""))[:40] for c in t["columns"][:8]], "bbox": bbs[j] if j < len(bbs) else None} for r, j in list(zip(t["rows"], t["src"]))[:300]]})
+        return out
+    tables = geo = None
+    if kind == "swiss":
+        import agent
+        import qa
+
+        tables, geo = agent.view(qa.facts_for(full))
+        out["note"] = "Vector plan: parsed by code from the PDF's own lines. Geometry and areas are exact."
+    elif kind == "raster" and system.big_sheet(full):
+        import scan_facts
+
+        rec, fresh = scan_facts.ensure(full)
+        out["cost_usd"] = rec.get("usd", 0.0) if fresh else 0.0
+        if "tables" in rec:
+            tables, geo = rec["tables"], rec["geo"]
+            out["note"] = "Scanned sheet: a model listed the rooms, code measured them (%s) and counted objects piece by piece. Approximate. Read once for $%.2f." % (rec.get("how", ""), rec.get("usd", 0))
+        else:
+            out["note"] = "%s. No fact table: this sheet is read per question, with code measuring and counting." % rec["outlier"].capitalize()
+    elif kind == "raster":
+        import plan_facts
+
+        tables, geo, tok, usd = plan_facts.image_view(full)
+        out["cost_usd"] = usd
+        out["note"] = "Floor-plan image: rooms listed by a model, objects from the image readers. Approximate."
+    if tables:
+        rooms = tables["rooms"]
+        fx = [k for k in ("toilets", "washbasins", "sinks", "bathtubs", "showers", "showers_baths") if any(k in r for r in rooms)]
+        out["summary"] = [["rooms", len(rooms)], ["doors", len(tables["doors"])], ["windows", len(tables["windows"])], ["fixtures", len(tables["fixtures"])]]
+        num = lambda v: "" if v is None else ("%.2f" % v if isinstance(v, float) else str(v))
+        out["groups"] = [
+            {"name": "Rooms", "columns": ["no.", "label", "m²", "unit", "doors", "win."] + [k[:6] for k in fx],
+             "rows": rows_of(rooms, lambda r: [r.get("number") or r["id"], r.get("label") or r.get("type") or "", num(r.get("area_m2")), r.get("apartment") or "", len(r["doors"]), len(r["windows"])] + [r.get(k, 0) for k in fx], geo)},
+            {"name": "Doors", "columns": ["id", "rooms it connects"], "rows": rows_of(tables["doors"], lambda d: [d["id"], ", ".join(d["rooms"])], geo)},
+            {"name": "Windows", "columns": ["id", "room"], "rows": rows_of(tables["windows"], lambda w: [w["id"], ", ".join(w["rooms"])], geo)},
+            {"name": "Fixtures", "columns": ["id", "type", "room"], "rows": rows_of(tables["fixtures"], lambda x: [x["id"], x["type"], x.get("room") or ""], geo)}]
+    return json.loads(json.dumps(out, default=float))
+
+
 def gemini_backends():
     """Every model-backed step through the Google API; no GPU needed."""
     import agent
@@ -257,6 +326,18 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(page_html(HOSTED, live=HOSTED is not None), "text/html; charset=utf-8")
             elif u.path == "/api/examples":
                 self._send(json.dumps(examples(), ensure_ascii=False))
+            elif u.path == "/api/facts":
+                p = parse_qs(u.query)["path"][0]
+                if HOSTED is not None and p in (HOSTED.get("facts") or {}):
+                    self._send(json.dumps(HOSTED["facts"][p], ensure_ascii=False))
+                elif HOSTED is not None and (ACCESS_CODE and self.headers.get("X-Access-Code", "") != ACCESS_CODE):
+                    self._send(json.dumps({"error": "Enter the access code to read an uploaded drawing."}))
+                elif SPENT[0] >= BUDGET:
+                    self._send(json.dumps({"error": "This demo has used up its API budget for now."}))
+                else:
+                    f = facts(p)
+                    SPENT[0] += f.get("cost_usd") or 0
+                    self._send(json.dumps(f, ensure_ascii=False))
             elif u.path == "/api/validation":
                 self._send(json.dumps(validation(), ensure_ascii=False))
             elif u.path == "/api/drawing":
@@ -318,14 +399,19 @@ def page_html(static, live=False):
 
 def export(out):
     ex = examples()
-    static = {"examples": ex, "drawings": {}, "answers": {}, "validation": validation()}
+    static = {"examples": ex, "drawings": {}, "answers": {}, "facts": {}, "validation": validation()}
     old = {}
     if "--reuse" in sys.argv:  # keep the answers of an earlier export (they cost API calls); only missing or empty ones are asked again
         h = open(sys.argv[sys.argv.index("--reuse") + 1], encoding="utf-8").read()
         i, j = h.index("const STATIC = ") + 15, h.index(";\nconst LIVE" if ";\nconst LIVE" in h else ";\nconst $ =")
-        old = {k: v for k, v in json.loads(h[i:j].replace("<\\/", "</"))["answers"].items() if v.get("answer") is not None and v.get("trace")}
+        old = {k: v for k, v in json.loads(h[i:j].replace("<\\/", "</"))["answers"].items() if v.get("answer") is not None and v.get("trace")
+               and not (v.get("kind") == "raster" and v.get("plan_source") == "vision" and "--refresh-scans" in sys.argv)}
     for e in ex:
         static["drawings"][e["path"]] = drawing(e["path"], width=1500)
+        try:
+            static["facts"][e["path"]] = facts(e["path"])
+        except Exception as err:
+            static["facts"][e["path"]] = {"kind": e["kind"], "summary": [], "groups": [], "note": "The facts of this drawing could not be listed (%s)." % str(err)[:80]}
         for q in e["questions"]:
             key = e["path"] + "\n" + q["q"]
             static["answers"][key] = old[key] if key in old else ask(e["path"], q["q"])

@@ -110,6 +110,25 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; marg
 .evlist li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; border-radius: 3px; cursor: pointer }
 .evlist li:hover { background: var(--accent-soft) }
 .evlist b { font-family: var(--mono); font-weight: 400; font-variant-numeric: tabular-nums }
+/* online: upload first, facts panel, session history */
+.drop { border: 2px dashed var(--accent); border-radius: 8px; padding: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--accent-soft) }
+.drop.over { background: var(--panel); border-style: solid }
+.drop b { font-size: 15px } .drop small { color: var(--muted) }
+.drop input { font: inherit; max-width: 100%; color: var(--ink) }
+.drop input[type=password] { padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel) }
+.tabs { display: flex; gap: 0; margin: -12px -12px 12px; border-bottom: 1px solid var(--line) }
+.tabs button { all: unset; cursor: pointer; padding: 9px 16px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 3px solid transparent }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent) }
+.sum { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px }
+.sum span { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 3px 9px; font-size: 12.5px }
+.sum b { font-family: var(--mono); font-weight: 500; font-size: 15px; margin-right: 4px }
+.fgrp summary { color: var(--ink); font-weight: 600; font-size: 13px; margin-top: 10px }
+.ftab { max-height: 38vh; overflow: auto; border: 1px solid var(--line); border-radius: 4px; margin-top: 6px }
+.ftab table { font-size: 12px } .ftab th { position: sticky; top: 0; background: var(--soft) } .ftab td, .ftab th { padding: 3px 7px }
+.ftab tr.loc { cursor: pointer } .ftab tr.loc:hover td { background: var(--accent-soft) }
+.sugg { display: flex; flex-direction: column; gap: 2px }
+.hist button { font-size: 12.5px !important; color: var(--muted) }
+.ev.fact { fill: #7a3fb0; fill-opacity: 0.35; stroke: #7a3fb0; stroke-width: 3 }
 /* How it works + validation */
 .doc { max-width: 1180px; margin: 0 auto }
 .doc h3 { font-size: 17px; margin: 22px 0 4px; font-weight: 600 }
@@ -148,11 +167,15 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
 <main id="v-ask">
 <div class="desk">
   <section class="panel" aria-label="Drawings and questions">
-    <h2>Drawings, by how they are read</h2>
+    <div class="drop" id="uploadbox"><label for="upfile"><b>Ask your own drawing</b></label>
+      <input id="code" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code" hidden>
+      <input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc">
+      <small id="upmsg">Drop a file here or choose one: PDF (any number of sheets), a scan or image, or an IFC model. It is read once into facts, then you can ask anything.</small></div>
+    <h2>Or pick an example, by how it is read</h2>
     <div class="sheets" id="sheets"></div>
-    <div class="upload" id="uploadbox"><label for="upfile"><b>Your own drawing</b></label><input id="code" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code" hidden><input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc"><small id="upmsg">PDF (any number of sheets), a scan or image, or an IFC model.</small></div>
-    <h2>Example questions</h2>
+    <h2 id="qhead">Example questions</h2>
     <div class="qs" id="qs"></div>
+    <div id="histbox" hidden><h2 style="margin-top:12px">Asked in this session</h2><div class="qs hist" id="hist"></div></div>
   </section>
 
   <section class="panel" aria-label="Drawing viewer">
@@ -170,9 +193,10 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
     <div class="viewer" id="viewer"></div>
   </section>
 
-  <section class="panel" aria-label="Answer" aria-live="polite">
-    <h2>Answer</h2>
+  <section class="panel" aria-label="Answer and facts" aria-live="polite">
+    <div class="tabs" role="tablist"><button type="button" role="tab" id="tab-answer" aria-selected="true">Answer</button><button type="button" role="tab" id="tab-facts" aria-selected="false">Facts read from the drawing</button></div>
     <div id="out"><p class="empty">Pick a question on the left, or type your own.</p></div>
+    <div id="facts" hidden><p class="empty">Pick a drawing.</p></div>
   </section>
 </div>
 </main>
@@ -185,7 +209,7 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
     <div class="card" style="--c:var(--bim)"><h4>BIM model (IFC)</h4><p>Code lists every element with its storey, type, materials, layers, quantities and properties.</p><div class="to">one row per element</div></div>
     <div class="card" style="--c:var(--tab)"><h4>Schedule sheet</h4><p>Door, window and finish schedules are lifted from the text layer with their cell positions.</p><div class="to">tables with named columns</div></div>
     <div class="card" style="--c:var(--img)"><h4>Floor-plan image</h4><p>Three independent readers count objects: a trained detector, a segmentation network and a vision model. The middle count wins.</p><div class="to">counts with boxes + agreement flag</div></div>
-    <div class="card" style="--c:var(--vis)"><h4>Scanned sheet, anything else</h4><p>Nothing is assumed. The sheet is read per question, with code doing the measuring and the counting.</p><div class="to">scale · measured regions · counted boxes</div></div>
+    <div class="card" style="--c:var(--vis)"><h4>Scanned sheet</h4><p>A model lists the rooms and points at each; code measures them and counts doors, windows and fixtures piece by piece. Sheets that are not floor plans are read per question.</p><div class="to">the same floor-plan table, approximate</div></div>
   </div>
 
   <h3>2 · A question climbs only as far as it has to</h3>
@@ -226,6 +250,7 @@ const api = {
   examples: async () => STATIC ? STATIC.examples : (await fetch("/api/examples")).json(),
   drawing: async p => STATIC && STATIC.drawings[p] ? STATIC.drawings[p] : (await fetch("/api/drawing?path=" + encodeURIComponent(p))).json(),
   validation: async () => STATIC ? STATIC.validation : (await fetch("/api/validation")).json(),
+  facts: async p => STATIC && STATIC.facts && STATIC.facts[p] ? STATIC.facts[p] : !live ? null : (await fetch("/api/facts?path=" + encodeURIComponent(p), { headers: headers() })).json(),
   ask: async (p, q) => {
     if (STATIC && STATIC.answers[p + "\n" + q]) return STATIC.answers[p + "\n" + q];
     if (!live) return { answer: null, note: "This published copy holds the listed questions only. Open the live demo (see the repository) to ask anything or upload a drawing." };
@@ -260,7 +285,13 @@ async function loadDrawing(ex) {
       $("qs").appendChild(b);
     });
   });
-  if (!ex.questions.length) $("qs").innerHTML = '<p class="empty">Type a question above the drawing.</p>';
+  $("qhead").textContent = ex.questions.length ? "Example questions" : "Questions to try";
+  if (!ex.questions.length) {
+    const box = document.createElement("div"); box.className = "sugg";
+    (SUGGEST[ex.kind] || SUGGEST.unknown).forEach(q => { const b = document.createElement("button"); b.type = "button"; b.textContent = q; b.onclick = () => { $("question").value = q; ask(q); }; box.appendChild(b); });
+    $("qs").appendChild(box);
+  }
+  renderHistory(); loadFacts(ex);
   const v = $("viewer");
   v.innerHTML = '<div class="nodraw">Loading the drawing…</div>'; svgEl = null;
   const d = await api.drawing(ex.path);
@@ -277,6 +308,51 @@ async function loadDrawing(ex) {
   }
   setView(home.slice());
 }
+
+const SUGGEST = {
+  swiss: ["How many doors and windows are there?", "Which room is the largest, and how big is it?", "What is the total indoor floor area?", "How many metres of baseboard does the largest room need, minus 0.9 m per door?"],
+  raster: ["How many doors and windows are there?", "Which room is the largest, and how big is it?", "What is the total floor area, room by room type?", "How many metres of baseboard does the largest room need, leaving out the door openings?"],
+  table: ["What does this sheet show, and at what scale?", "How many doors are listed in the door schedule, by type?", "Which rooms have a tile floor finish?"],
+  ifc: ["How many doors and windows does the model have, by storey?", "Which wall types are used, with their quantities?", "Which room is the largest?", "Which materials are used in the external walls?"],
+  unknown: ["What does this sheet show, and at what scale?"],
+};
+const history = {};  // path -> [{ q, res }]
+function renderHistory() {
+  const h = (cur && history[cur.path]) || [];
+  $("histbox").hidden = !h.length; $("hist").innerHTML = "";
+  h.slice().reverse().forEach(it => { const b = document.createElement("button"); b.type = "button"; b.textContent = it.q + (it.res.answer != null ? "  →  " + String(it.res.answer).slice(0, 40) : ""); b.onclick = () => { $("question").value = it.q; showTab("answer"); showResult(it.res, it.q); }; $("hist").appendChild(b); });
+}
+function showTab(name) {
+  $("out").hidden = name !== "answer"; $("facts").hidden = name !== "facts";
+  $("tab-answer").setAttribute("aria-selected", name === "answer"); $("tab-facts").setAttribute("aria-selected", name === "facts");
+}
+async function loadFacts(ex) {
+  const el = $("facts");
+  el.innerHTML = '<p class="empty">' + (ex.uploaded ? "Reading the drawing into facts. This happens once per drawing and can take up to a minute for a large scan…" : "Loading…") + "</p>";
+  let f = null;
+  try { f = await api.facts(ex.path); } catch (e) { f = { error: String(e) }; }
+  if (cur !== ex) return;
+  if (!f) { el.innerHTML = '<p class="empty">The facts of this drawing are listed in the live demo.</p>'; return; }
+  if (f.error) { el.innerHTML = `<p class="badge warn">${esc(f.error)}</p>`; return; }
+  el.innerHTML = `<div class="sum">${(f.summary || []).map(([k, v]) => `<span><b>${esc(v)}</b>${esc(k)}</span>`).join("")}</div><p class="note">${esc(f.note || "")}</p>` +
+    (f.groups || []).filter(g => g.rows.length).map((g, gi) => `<details class="fgrp"${gi === 0 ? " open" : ""}><summary>${esc(g.name)} · ${g.rows.length}</summary><div class="ftab"><table><thead><tr>${g.columns.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${g.rows.map((r, ri) => `<tr class="${r.bbox ? "loc" : ""}" data-g="${gi}" data-r="${ri}">${r.cells.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`).join("") +
+    ((f.groups || []).some(g => g.rows.some(r => r.bbox)) ? '<p class="note" style="margin-top:8px">Point at a row to see it on the drawing; click to zoom there.</p>' : "");
+  const groups = (f.groups || []).filter(g => g.rows.length);
+  el.querySelectorAll("tr.loc").forEach(tr => {
+    const r = groups[tr.dataset.g].rows[tr.dataset.r];
+    tr.onmouseenter = () => factMark(r); tr.onmouseleave = () => factMark(null); tr.onclick = () => zoomTo(r.bbox);
+  });
+  if (ex.uploaded) { showTab("facts"); $("upmsg").textContent = "Read. The facts are on the right; ask a question above the drawing."; }
+}
+function factMark(r) {
+  if (!svgEl) return;
+  svgEl.querySelectorAll(".fact").forEach(n => n.remove());
+  const g = svgEl.querySelector("#evg"); if (!g || !r || !r.bbox) return;
+  const pad = home[2] / 600;
+  g.insertAdjacentHTML("beforeend", r.poly && r.poly.length > 2 ? `<polygon class="ev fact" points="${r.poly.map(p => p.join(",")).join(" ")}"/>`
+    : `<rect class="ev fact" x="${r.bbox[0] - pad}" y="${r.bbox[1] - pad}" width="${r.bbox[2] - r.bbox[0] + 2 * pad}" height="${r.bbox[3] - r.bbox[1] + 2 * pad}"/>`);
+}
+$("tab-answer").onclick = () => showTab("answer"); $("tab-facts").onclick = () => showTab("facts");
 
 const evGroup = e => e.kind === "measured" ? "Measured by code" : e.kind === "counted" ? "Counted: " + e.name : e.kind === "model box" ? "Pointed at by the model" : e.kind === "table_row" ? "Schedule rows" : (e.kind || "evidence").replace(/_/g, " ");
 const evClass = e => e.kind === "measured" ? (e.poly && e.poly.length === 2 ? "line" : "meas") : (e.kind === "room" || e.kind === "table_row" || e.kind === "space") ? "" : "sym";
@@ -374,7 +450,9 @@ async function ask(q) {
   $("qs").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.textContent === q));
   $("out").innerHTML = '<p class="empty">Working…</p>';
   const busy = document.createElement("div"); busy.className = "busy"; busy.textContent = "Answering…"; $("viewer").appendChild(busy);
-  try { showResult(await api.ask(cur.path, q), q); } catch (e) { showResult({ error: String(e) }, q); }
+  showTab("answer");
+  const at = cur;
+  try { const res = await api.ask(cur.path, q); (history[at.path] = history[at.path] || []).push({ q, res }); if (cur === at) { showResult(res, q); renderHistory(); } } catch (e) { showResult({ error: String(e) }, q); }
   busy.remove();
 }
 
@@ -406,22 +484,27 @@ function addSheet(ex) {
   const b = document.createElement("button");
   b.type = "button"; b.dataset.path = ex.path; b.setAttribute("aria-pressed", "false");
   b.innerHTML = esc(ex.title) + (ex.uploaded ? '<span class="tag">uploaded</span>' : "");
-  b.onclick = () => loadDrawing(ex).then(() => { $("out").innerHTML = '<p class="empty">Pick a question on the left, or type your own.</p>'; });
+  b.onclick = () => loadDrawing(ex).then(() => { $("out").innerHTML = '<p class="empty">Pick a question on the left, or type your own.</p>'; showTab(ex.questions.length ? "answer" : "facts"); });
   grp.appendChild(b);
   return b;
 }
-if (!live) { $("upfile").disabled = true; $("upmsg").textContent = "Upload works in the live demo (see the repository); this published copy shows stored answers."; }
+if (!live) { $("upfile").disabled = true; $("upmsg").textContent = "Upload works in the live demo (link in the repository); this published copy shows stored answers."; }
 $("code").hidden = !NEEDS_CODE;
-$("upfile").addEventListener("change", async e => {
-  const f = e.target.files[0]; if (!f) return;
+const drop = $("uploadbox");
+["dragenter", "dragover"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f && live) upload(f); });
+$("upfile").addEventListener("change", e => { const f = e.target.files[0]; if (f) upload(f); });
+async function upload(f) {
+  if (NEEDS_CODE && !$("code").value.trim()) { $("upmsg").textContent = "Enter the access code first (it is in the submission notes)."; $("code").focus(); return; }
   $("upmsg").textContent = "Uploading…";
   try {
     const ex = await (await fetch("/api/upload", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name), ...headers() }, body: f })).json();
     if (ex.error) { $("upmsg").textContent = ex.error; return; }
-    $("upmsg").textContent = "Loaded. Type a question above the drawing.";
-    examples.push(ex); addSheet(ex).click(); $("question").focus();
+    $("upmsg").textContent = "Uploaded. Reading it into facts…";
+    examples.push(ex); addSheet(ex).click();
   } catch (err) { $("upmsg").textContent = "Upload failed: " + err; }
-});
+}
 
 /* ---- validation view ---- */
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) + "%" : "–";

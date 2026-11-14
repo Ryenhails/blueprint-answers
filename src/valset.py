@@ -104,6 +104,8 @@ def run(workers=6):
     demo_server.gemini_backends()
     b = {k: demo_server.BACKENDS[k] for k in ("llm", "agent", "table_llm", "raster", "vision")}
     rows = [json.loads(l) for l in open(VAL)]
+    if os.environ.get("STOA_VAL_GROUP"):  # re-run one group only (its old rows must be removed from the results file first)
+        rows = [r for r in rows if r["group"] == os.environ["STOA_VAL_GROUP"]]
     done = {json.loads(l)["id"] for l in open(OUT)} if os.path.exists(OUT) else set()
     todo = [r for r in rows if r["id"] not in done]
     lock = threading.Lock()

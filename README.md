@@ -5,7 +5,7 @@
 Entry for the Stoa challenge "Make Blueprints Talk", Junction 2026.
 
 - Demo (stored answers, runs in the browser): https://ryenhails.github.io/blueprint-answers/
-- Live demo with upload (access code in the submission notes): <!--LIVE-->
+- Live demo with upload (access code in the submission notes): https://huggingface.co/spaces/Ryenhails/blueprint-answers
 - Two-minute video: <!--VIDEO-->
 
 ## The idea
@@ -25,7 +25,8 @@ and mismeasured. So the system gives the model the jobs it is good at and keeps 
 | BIM model (IFC), plans rendered from one | IfcOpenShell (`src/ifc_adapter.py`, `src/ifc_agent.py`) | one row per element: storey, type, materials, layers, quantities, properties |
 | Schedule sheet | tables lifted from the text layer with cell positions (`src/table_adapter.py`) | tables with named columns |
 | Floor-plan image | a trained detector, a segmentation network and a vision model; the middle count wins (`src/raster_ingest.py`) | counts with boxes and an agreement flag |
-| Scanned sheet, anything else | read per question; code measures and counts (`src/vision.py`, `src/measure.py`, `src/tile_count.py`) | scale, measured regions, counted boxes |
+| Scanned floor plan | a model lists the rooms and points at each; code measures them and counts objects piece by piece (`src/scan_facts.py`, `src/measure.py`, `src/tile_count.py`) | the same floor-plan table, approximate |
+| Any other sheet (piping, structural, details) | read per question; code measures and counts on request (`src/vision.py`) | none stored |
 
 The ladder a question climbs (`src/system.py`):
 
@@ -54,16 +55,18 @@ Full per-question results: `data/val_results.jsonl`. The same tables are in the 
 | Vector plan PDFs (4 languages) | 300 | 299 / 300 (99.7%) | $0 |
 | BIM models, fixed question forms (8 languages) | 150 | 150 / 150 (100%) | $0 |
 | Floor-plan images (English, Finnish) | 300 | 258 / 300 (86.0%) | $0 per question; about $0.036 once per image when it is first read |
-| Scanned sheets (PNG twins of vector plans) | 220 | 127 / 220 (57.7%) | $0.029 |
-| **All unseen numeric questions** | **970** | **834 / 970 (86.0%)** | **$0.0065** |
+| Scanned sheets (PNG twins of vector plans) | 220 | 145 / 220 (65.9%) | about $0.07 once per sheet to read it, then $0.012 |
+| **All unseen numeric questions** | **970** | **852 / 970 (87.8%)** | **$0.016** including reading the scans |
 | BIM models, open questions (IFC-Bench, graded by a model) | 200 | 98 correct, 37 partly correct, 65 wrong | $0.088 |
 | Schedule sheets (all 64 dataset questions; prompts were tuned on them) | 64 | 46 / 48 numeric; text: 15 correct, 1 partly correct | $0.006 |
 
-Scanned sheets by question form (20 questions each): apartments 20, rooms with a label 20, washbasins 16, toilets 13,
-bathtubs 12, area of one room 11, area of rooms with a label 10, total floor area 10, area of an apartment 8, windows 7, doors 0.
-Door counts on scans come out 10–35% low on every drawing; the median size error on area questions is a few percent, outside the 2% tolerance about half the time.
+Scanned sheets by question form (20 questions each): apartments 20, rooms with a label 20, washbasins 18, toilets 17,
+bathtubs 17, area of rooms with a label 16, area of one room 11, area of an apartment 10, total floor area 9, windows 7, doors 0.
+Door counts on scans come out 10–35% low on every drawing. Areas printed on the sheet are read exactly; areas that have to be
+measured are within 2% for about a quarter of the rooms at this resolution (checked room by room against the vector files of six sheets).
+Before scans were read into the fact table (each question answered by reading the sheet), the same 220 questions scored 127.
 
-The whole run cost $24 in API calls. For comparison, the development set (500 questions, used for tuning) scores 406 / 434 numeric.
+The whole run cost $34 in API calls. For comparison, the development set (500 questions, used for tuning) scores 406 / 434 numeric.
 
 How the set is built (`src/valset.py`, fixed seed): none of the questions is in the 500-question set used during
 development; the floor-plan images are from the official CubiCasa5K test split, which the detector never saw; the scans are
@@ -74,7 +77,7 @@ What the numbers do not cover:
 
 - Open BIM questions have free-text reference answers. They were graded by a language model against the reference; no person checked the grades.
 - The dataset has 64 schedule-sheet questions in total and the prompts were tuned on them, so they are reported apart.
-- Scanned sheets are scored on one drawing style (the dataset's apartment plans as PNG, about 2,500 pixels wide). Doors on scans are undercounted on every drawing and sums over many rooms are unstable; we did not find the cause of the door undercount.
+- Scanned sheets are scored on one drawing style (the dataset's apartment plans as PNG, about 2,500 pixels wide, 17–34 mm per pixel). Doors on scans are undercounted on every drawing, and we did not find the cause. Measured areas of small rooms crowded with fixtures come out too small.
 - The vector-plan parser relies on the drawing style of this dataset. Another CAD style needs new rules, or falls back to the scan route.
 - The floor-plan detector and the median rule are fitted to CubiCasa5K drawings and its counting conventions; other images use the vision model alone.
 
@@ -114,7 +117,7 @@ reader are optional. Without their stored readings every image is read by the vi
 | `src/ifc_adapter.py`, `src/ifc_agent.py` | BIM: fixed forms; open questions with generated code |
 | `src/table_adapter.py` | schedule sheets |
 | `src/raster_*.py`, `src/plan_facts.py`, `src/cubi_*.py` | floor-plan images: readers, the unified floor-plan fact table, detector training |
-| `src/vision.py`, `src/measure.py`, `src/tile_count.py` | reading a sheet; measuring; counting |
+| `src/scan_facts.py`, `src/vision.py`, `src/measure.py`, `src/tile_count.py` | scans into fact tables; reading a sheet; measuring; counting |
 | `src/llm_plan.py`, `src/agent.py`, `src/gemini_backend.py` | decision model, code-writing step, API calls and prices |
 | `src/demo_server.py`, `src/demo.html` | the interface (live server and exported page) |
 | `src/valset.py`, `src/scan_eval.py`, `src/evalkit.py` | validation sets and scoring |

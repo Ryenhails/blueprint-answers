@@ -167,6 +167,11 @@ def view(full):
 
         t, g = agent.view(qa.facts_for(full))
         return t, g, True, 0, 0.0
+    if kind == "raster" and system.big_sheet(full):  # a scanned sheet: its own ingestion, same table
+        import scan_facts
+
+        v = scan_facts.view(full)
+        return None if v is None else (v[0], v[1], False, v[2], v[3])
     if kind == "raster":
         t, g, tok, usd = image_view(full)
         return t, g, False, tok, usd

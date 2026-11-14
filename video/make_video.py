@@ -32,16 +32,16 @@ FONT_DIR = [os.path.expanduser("~/.local/share/fonts/mpl"), "/usr/share/fonts/de
 VOICE, TTS_MODEL = "Charon", "gemini-3.8-flash-tts"
 
 SCRIPT = [
-    ("hook", "Before anything gets built, someone counts the doors and measures the floors, by hand. "
-             "We gave a frontier model the image and the question: thirty-six of fifty. It reads the drawing fine. It just can't count or measure."),
-    ("idea", "Blueprint Answers splits the job. Models decide and point. Code counts, sums and measures. "
-             "Every drawing is read once into facts, by a parser chosen from what the file is."),
-    ("vector", "Ask how large an apartment is. The question form is known, so no model is called. The rooms light up, the sum is shown, the cost is zero."),
-    ("ladder", "A new kind of question climbs a ladder. A small model routes it. If it is complex, a larger model writes code over the facts, and the code runs. "
-               "The answer slip shows every step and its cost."),
-    ("measure", "Scans are the hard part. The model only points at a room. Code reads the scale, checks it against the scale bar, "
-                "fills the room to its walls, and returns area and perimeter."),
-    ("count", "To count doors, the sheet is cut into pieces. The model boxes each symbol, code merges the boxes, and every counted door is drawn back on the sheet."),
+    ("task", "A construction drawing, and a question. The answer has to come with proof. Drawings come in five kinds: vector plans, building models, schedules, "
+             "floor-plan images, and scans. Questions in four: count, measure, look up, and combine."),
+    ("motive", "We first gave Opus five point five just the image and the question. Thirty-six of fifty. It understood every drawing. It miscounted and mismeasured."),
+    ("facts", "So our idea starts with a fact table. Every room, door, window and fixture on the drawing becomes one row, with its size and its place on the sheet."),
+    ("lanes", "Each drawing is read into this table once, by a reader chosen for its kind. Vector files are parsed exactly. Images and scans are read by models and measured by code."),
+    ("ladder", "Then a question takes the cheapest step that can answer it. A known form costs nothing. A small model routes new wording. A larger model writes code on the table. "
+               "Only if the table falls short does a model read the sheet."),
+    ("case", "Take one question: how much skirting board for the bedrooms and living room of apartment A, minus the doors? It is new, so the router marks it complex. "
+             "The model writes a few lines of code on the fact table. The code runs, and every room and door it used is drawn on the plan."),
+    ("scan", "A scan gets the same table. A model lists the rooms and points at each one. Code measures them."),
     ("valid", None),  # written from the validation numbers
     ("close", "Blueprint Answers. Drawings that answer, and show their work."),
 ]
@@ -169,7 +169,10 @@ def frame():
 
 def header(d, kicker, title):
     d.text((90, 60), kicker.upper(), font=font(24, True), fill=MUTED)
-    d.text((90, 96), title, font=font(54, True), fill=INK)
+    size = 54
+    while size > 30 and d.textlength(title, font=font(size, True)) > W - 180:
+        size -= 2
+    d.text((90, 96), title, font=font(size, True), fill=INK)
 
 
 def caption(d, text, t, T):
@@ -234,224 +237,303 @@ def answer_card(d, box, question, answer, unit, badges, steps, t, cost="$0"):
 
 
 # ---- scenes: each returns a function (t seconds, T duration) -> image -------------------------
+D = {}  # video_data.json (prepare_data.py)
 
 
-def scene_hook(st):
-    path = next(e["path"] for e in st["examples"] if "cubicasa" in e["path"])
-    sh = Sheet(*sheet_image(st, path))
+def _img(uri):
+    return Image.open(io.BytesIO(base64.b64decode(uri.split(",", 1)[1]))).convert("RGB")
+
+
+def fit(im, box):
+    """Paste size and offset to fit im inside box (x0, y0, x1, y1), centred."""
+    bw, bh = box[2] - box[0], box[3] - box[1]
+    k = min(bw / im.width, bh / im.height)
+    w, h = max(1, int(im.width * k)), max(1, int(im.height * k))
+    return im.resize((w, h), Image.BILINEAR), (box[0] + (bw - w) // 2, box[1] + (bh - h) // 2)
+
+
+def scene_task(st):
+    thumbs = [(_img(k["image"]), k["name"]) for k in D["kinds"]]
+    cols = {n: c for n, c, _ in ROUTES}
+    qs = [("Count", "How many doors are on this floor?"), ("Measure", "How large is apartment A?"), ("Look up", "What type is door 121?"),
+          ("Combine", "Skirting board for the bedrooms, minus the doors?")]
 
     def f(t, T):
         im, d = frame()
-        v = sh.view(sh.full(), (820, 820))
-        im.paste(v, (90, 110))
-        d.rectangle([90, 110, 910, 930], outline=LINE, width=2)
-        x = 1000
-        for i, (txt, at) in enumerate([("Someone counts the doors", 0.4), ("and measures the floors.", 2.2), ("By hand.", 4.4)]):
-            if t > at:
-                d.text((x, 150 + i * 80), txt, font=font(58, True), fill=mix(BG, INK, ease((t - at) * 2)))
-        if t > T * 0.45:
-            k = ease((t - T * 0.45) * 1.5)
-            panel(d, [x, 440, 1830, 760])
-            d.text((x + 36, 464), "FRONTIER MODEL · IMAGE + QUESTION ONLY", font=font(22, True), fill=MUTED)
-            d.text((x + 36, 510), "36 / 50", font=font(150, True, mono=True), fill=mix(PANEL, RED, k))
-            d.text((x + 36, 690), "counts must be exact, sizes within 2%", font=font(24), fill=MUTED)
-        if t > T * 0.72:
-            d.text((x, 800), "It reads the drawing fine.", font=font(40), fill=INK)
-            d.text((x, 856), "It can't count or measure.", font=font(40, True), fill=RED)
-        return im
-
-    return f
-
-
-def scene_idea(st):
-    def f(t, T):
-        im, d = frame()
-        header(d, "Blueprint Answers", "Models decide and point.")
-        if t > 1.6:
-            d.text((90, 166), "Code counts, sums and measures.", font=font(54, True), fill=BLUE)
-        y0 = 330
-        d.text((90, y0 - 50), "EVERY DRAWING IS READ ONCE, INTO FACTS", font=font(22, True), fill=MUTED)
-        cw = (W - 180 - 4 * 20) // 5
-        for i, (name, col, to) in enumerate(ROUTES):
-            at = T * 0.38 + i * 0.75
+        header(d, "The task", "A drawing and a question in. An answer with proof out.")
+        d.text((90, 196), "FIVE KINDS OF DRAWINGS", font=font(22, True), fill=MUTED)
+        cw = (W - 180 - 4 * 24) // 5
+        for i, (th, name) in enumerate(thumbs):
+            at = 1.2 + i * 0.9
             if t < at:
                 continue
-            k = ease((t - at) * 2.5)
-            x = 90 + i * (cw + 20)
-            y = y0 + int((1 - k) * 40)
-            panel(d, [x, y, x + cw, y + 300])
-            d.rectangle([x, y, x + cw, y + 12], fill=col)
-            para(d, (x + 22, y + 40), name, font(30, True), cw - 44)
-            d.line([x + 22, y + 190, x + cw - 22, y + 190], fill=LINE, width=2)
-            d.text((x + 22, y + 152), "↓", font=font(28, True), fill=col)
-            para(d, (x + 22, y + 206), to, font(22, mono=True), cw - 44, fill=INK)
-        if t > T * 0.38 + 4.2:
-            panel(d, [90, 690, W - 90, 800], fill=(20, 32, 46), outline=(20, 32, 46))
-            d.text((126, 722), "fact tables", font=font(34, True, mono=True), fill=(238, 241, 244))
-            d.text((400, 728), "rooms · doors · windows · fixtures · elements · schedule rows — each with its place on the sheet", font=font(26), fill=(207, 214, 222))
+            x = 90 + i * (cw + 24)
+            panel(d, [x, 236, x + cw, 236 + 330])
+            p, off = fit(th, (x + 10, 246, x + cw - 10, 500))
+            im.paste(p, off)
+            col = cols.get(name, cols.get("Scanned sheet"))
+            d.rectangle([x, 512, x + cw, 566], fill=col)
+            d.text((x + 16, 524), name, font=font(25, True), fill=(255, 255, 255))
+        if t > T * 0.55:
+            d.text((90, 610), "FOUR KINDS OF QUESTIONS", font=font(22, True), fill=MUTED)
+            qw = (W - 180 - 3 * 24) // 4
+            for i, (kind, q) in enumerate(qs):
+                at = T * 0.55 + 0.4 + i * 0.8
+                if t < at:
+                    continue
+                x = 90 + i * (qw + 24)
+                panel(d, [x, 650, x + qw, 840])
+                d.text((x + 22, 668), kind, font=font(34, True), fill=BLUE)
+                para(d, (x + 22, 722), "“%s”" % q, font(25), qw - 44)
         return im
 
     return f
 
 
-def scene_vector(st):
-    ex = next(e for e in st["examples"] if e["kind"] == "swiss")
-    cands = [x["q"] for x in ex["questions"] if x.get("type") == "area" and st["answers"][ex["path"] + "\n" + x["q"]].get("correct")
-             and len(st["answers"][ex["path"] + "\n" + x["q"]].get("evidence") or []) >= 3]
-    q = next((c for c in cands if "apartment" in c.lower() or "appartement" in c.lower()), cands[0])
-    a = st["answers"][ex["path"] + "\n" + q]
-    sh = Sheet(*sheet_image(st, ex["path"]))
-    polys = [e for e in a["evidence"] if e.get("poly")]
+def scene_motive(st):
+    b = D["baseline"]
+    pic = _img(b["image"])
 
     def f(t, T):
         im, d = frame()
-        header(d, "Vector plan · known question form", "No model call at all")
-        n = int(ease((t - 2.0) / 3.5) * len(polys)) if t > 2.0 else 0
-        shapes = [("poly", e["poly"], BLUE, 0.28, 4) for e in polys[:n]]
-        v = sh.view(sh.full(), (1120, 760), shapes)
-        im.paste(v, (90, 190))
-        d.rectangle([90, 190, 1210, 950], outline=LINE, width=2)
-        steps = [("Known question form", "query from the plan cache, computed by code on the vector geometry", "done"),
-                 ("Decision model", "not needed", "skip"), ("Model writes code on the facts", "not needed", "skip"), ("Model reads the sheet", "not needed", "skip")]
-        ans = ("%.2f" % a["answer"]) if isinstance(a["answer"], float) else str(a["answer"])
-        answer_card(d, [1250, 190, W - 90, 950], q[:110] + ("…" if len(q) > 110 else ""), ans, "m²",
-                    [("matches the dataset answer", GREEN), ("computed by code", GREEN)], steps, ease(t / (T * 0.8)), "$0")
+        header(d, "Why not just ask a frontier model?", "Opus 5.5, given only the image and the question")
+        panel(d, [90, 200, 980, 950])
+        p, off = fit(pic, (110, 220, 960, 930))
+        im.paste(p, off)
+        x = 1040
+        if t > 1.0:
+            k = ease((t - 1.0) * 1.5)
+            panel(d, [x, 200, W - 90, 480])
+            d.text((x + 36, 222), "50 DATASET QUESTIONS", font=font(22, True), fill=MUTED)
+            d.text((x + 36, 262), "%d / %d" % tuple(b["score"]), font=font(150, True, mono=True), fill=mix(PANEL, RED, k))
+        if t > T * 0.4:
+            panel(d, [x, 510, W - 90, 800])
+            para(d, (x + 36, 530), "“%s”" % b["question"], font(28), W - 90 - x - 72)
+            d.text((x + 36, 640), "Opus 5.5", font=font(26), fill=MUTED)
+            d.text((x + 36, 676), str(b["model"]), font=font(84, True, mono=True), fill=RED)
+            d.text((x + 400, 640), "on the drawing", font=font(26), fill=MUTED)
+            d.text((x + 400, 676), str(b["gold"]), font=font(84, True, mono=True), fill=GREEN)
+        if t > T * 0.7:
+            d.text((x, 840), "It understood the drawing.", font=font(38), fill=INK)
+            d.text((x, 892), "It miscounted and mismeasured.", font=font(38, True), fill=RED)
+        return im
+
+    return f
+
+
+def _plan(st):
+    sh = Sheet(*sheet_image(st, D["plan"]["path"]))
+    return sh, D["plan"]
+
+
+def scene_facts(st):
+    sh, P = _plan(st)
+    rows = [r for r in P["rooms"] if r["apartment"] and r["poly"]][:9]
+    xs = [p[0] for r in rows for p in r["poly"]]
+    ys = [p[1] for r in rows for p in r["poly"]]
+    focus = sh.around([min(xs), min(ys), max(xs), max(ys)], 0.12, 1000 / 740)
+
+    def f(t, T):
+        im, d = frame()
+        header(d, "The core idea", "A fact table: every room is one row, with its place on the sheet")
+        n = min(len(rows), int(max(0, t - 1.2) / (T * 0.62) * len(rows)) + (1 if t > 1.2 else 0))
+        shapes = [("poly", r["poly"], BLUE, 0.42 if i == n - 1 else 0.14, 5 if i == n - 1 else 3) for i, r in enumerate(rows[:n])]
+        objs = t > T * 0.74
+        if objs:
+            for b in P["doors"].values():
+                shapes.append(("box", [(b[0], b[1]), (b[2], b[3])], ORANGE, 0.25, 3))
+            for b in P["windows"].values():
+                shapes.append(("box", [(b[0], b[1]), (b[2], b[3])], GREEN, 0.25, 3))
+        box = win(sh.full(), focus, ease(t / 1.2))
+        im.paste(sh.view(box, (1000, 740), shapes), (90, 200))
+        d.rectangle([90, 200, 1090, 940], outline=LINE, width=2)
+        x0, x1 = 1130, W - 90
+        panel(d, [x0, 200, x1, 940])
+        cols = [("room", 0), ("label", 110), ("m²", 330), ("apt", 440), ("doors", 520), ("win.", 620)]
+        for name, dx in cols:
+            d.text((x0 + 24 + dx, 218), name.upper(), font=font(18, True), fill=MUTED)
+        d.line([x0 + 16, 250, x1 - 16, 250], fill=LINE, width=2)
+        y = 262
+        for i, r in enumerate(rows[:n]):
+            if i == n - 1:
+                d.rectangle([x0 + 8, y - 4, x1 - 8, y + 44], fill=(219, 232, 250))
+            vals = [r["number"], (r["label"] or "")[:13], "%.2f" % r["area_m2"], r["apartment"], str(r["doors"]), str(r["windows"])]
+            for (name, dx), v in zip(cols, vals):
+                d.text((x0 + 24 + dx, y + 6), v, font=font(23, mono=name != "label"), fill=INK)
+            y += 52
+        if objs:
+            c = P["counts"]
+            d.line([x0 + 16, 800, x1 - 16, 800], fill=LINE, width=2)
+            para(d, (x0 + 24, 816), "The same for every object:", font(23), x1 - x0 - 48, fill=MUTED)
+            d.text((x0 + 24, 852), "%d rooms · %d doors · %d windows · %d fixtures" % (c["rooms"], c["doors"], c["windows"], c["fixtures"]), font=font(24, True), fill=INK)
+        return im
+
+    return f
+
+
+READ = ["code parses the PDF's own lines", "code lists every element of the model", "code lifts the tables from the text layer", "three readers count, the middle one wins",
+        "a model lists the rooms, code measures them"]
+RUNGS = [("Known question form", "$0"), ("Small model routes it", "$0.0004"), ("Model writes code on the table", "≈ 1¢"), ("Model reads the sheet", "1–20¢")]
+
+
+def architecture(d, lanes, rungs, done):
+    """The whole system, drawn as far as the film has got. lanes: 0-5 readers shown; rungs: 0-4; done: output shown."""
+    d.text((90, 196), "READ ONCE", font=font(22, True), fill=MUTED)
+    lh = 62
+    for i, (name, col, _) in enumerate(ROUTES[:lanes]):
+        y = 232 + i * (lh + 10)
+        d.rounded_rectangle([90, y, 520, y + lh], 8, fill=mix(col, (255, 255, 255), 0.86), outline=col, width=3)
+        d.text((108, y + 6), name, font=font(24, True), fill=col)
+        d.text((108, y + 34), READ[i], font=font(18), fill=INK)
+        d.line([520, y + lh // 2, 640, y + lh // 2, 640, 412, 700, 412], fill=col, width=4)
+    if lanes:
+        d.polygon([(700, 400), (724, 412), (700, 424)], fill=INK)
+        d.rounded_rectangle([724, 300, 1130, 524], 10, fill=(20, 32, 46))
+        d.text((752, 320), "fact table", font=font(40, True, mono=True), fill=(238, 241, 244))
+        para(d, (752, 380), "rooms · doors · windows · fixtures · elements · schedule rows", font(22), 350, fill=(207, 214, 222))
+        d.text((752, 470), "each with size and place on the sheet", font=font(19), fill=(160, 190, 235))
+    if rungs:
+        d.text((90, 624), "EVERY QUESTION: CHEAPEST STEP THAT CAN ANSWER", font=font(22, True), fill=MUTED)
+        rw = 296
+        for i, (name, cost) in enumerate(RUNGS[:rungs]):
+            x = 90 + i * (rw + 14)
+            on = i == rungs - 1 and not done
+            d.rounded_rectangle([x, 660, x + rw, 800], 8, fill=(20, 32, 46) if on else PANEL, outline=LINE, width=2)
+            d.text((x + 16, 672), str(i), font=font(30, True, mono=True), fill=(160, 190, 235) if on else BLUE)
+            para(d, (x + 50, 674), name, font(23, True), rw - 64, fill=(238, 241, 244) if on else INK)
+            d.text((x + 16, 760), cost, font=font(22, mono=True), fill=(120, 200, 160) if on else GREEN)
+        d.line([927, 524, 927, 620], fill=INK, width=4)  # the table feeds the steps
+        d.polygon([(915, 620), (939, 620), (927, 644)], fill=INK)
+    if done:
+        d.line([90 + 4 * 310 - 14, 730, 1420, 730], fill=INK, width=4)
+        d.polygon([(1420, 718), (1444, 730), (1420, 742)], fill=INK)
+        d.rounded_rectangle([1444, 620, W - 90, 840], 10, fill=PANEL, outline=BLUE, width=4)
+        d.text((1470, 636), "ANSWER", font=font(22, True), fill=MUTED)
+        for i, s in enumerate(["computed by code", "evidence on the sheet", "every step and its cost"]):
+            d.text((1470, 676 + i * 46), "· " + s, font=font(25), fill=INK)
+        d.rounded_rectangle([1180, 300, W - 90, 524], 10, fill=PANEL, outline=LINE, width=2)
+        d.text((1206, 318), "THE SPLIT", font=font(22, True), fill=MUTED)
+        d.text((1206, 356), "Models decide and point.", font=font(30, True), fill=INK)
+        para(d, (1206, 402), "Code counts, sums and measures.", font(30, True), 600, fill=BLUE)
+
+
+def scene_lanes(st):
+    def f(t, T):
+        im, d = frame()
+        header(d, "The core idea", "Each drawing is read into the table once")
+        architecture(d, min(5, int(t / (T * 0.8) * 5) + 1), 0, False)
         return im
 
     return f
 
 
 def scene_ladder(st):
-    ex = next(e for e in st["examples"] if e["kind"] == "swiss")
+    def f(t, T):
+        im, d = frame()
+        header(d, "The core idea", "Then every question takes the cheapest step that can answer it")
+        r = min(4, int(t / (T * 0.72) * 4) + 1)
+        architecture(d, 5, r, t > T * 0.78)
+        return im
+
+    return f
+
+
+def scene_case(st):
+    ex = next(e for e in st["examples"] if e["path"] == D["plan"]["path"])
     q = next(x["q"] for x in ex["questions"] if "skirting" in x["q"])
     a = st["answers"][ex["path"] + "\n" + q]
-    code = (a.get("calc") or "").split("fact tables:\n")[-1].strip().split("\n")
-    rungs = [("Known question form", "177 forms, a dozen languages", "$0"), ("Decision model", "routes a new phrasing", "≈ $0.0004"),
-             ("Model writes code", "Python over the fact tables, run in a sandbox", "≈ $0.01–0.06"), ("Model reads the sheet", "may ask code to measure or count", "≈ $0.01–0.20")]
+    sh, P = _plan(st)
+    by = {r["id"]: r for r in P["rooms"]}
+    used = [by[e["id"]] for e in a["evidence"] if e.get("id") in by]
+    doors = [e for e in a["evidence"] if e.get("kind") == "door"]
+    code = [l for l in (a.get("calc") or "").split("fact tables:\n")[-1].strip().split("\n") if l.strip()]
+    xs = [p[0] for r in used for p in r["poly"]]
+    ys = [p[1] for r in used for p in r["poly"]]
+    focus = sh.around([min(xs), min(ys), max(xs), max(ys)], 0.3, 900 / 740)
+    per, nd = sum(r["perimeter_m"] for r in used), len(doors)
 
     def f(t, T):
         im, d = frame()
-        header(d, "A question climbs only as far as it has to", "Cheapest step that can answer wins")
-        cw = (W - 180) // 4
-        active = min(3, int(t / (T * 0.16))) if t < T * 0.5 else 2
-        for i, (name, det, cost) in enumerate(rungs):
-            x = 90 + i * cw
-            on = i == active
-            d.rectangle([x, 200, x + cw - 8, 360], fill=(20, 32, 46) if on else PANEL, outline=LINE, width=2)
-            d.text((x + 20, 216), "%d  %s" % (i, name), font=font(27, True), fill=(238, 241, 244) if on else INK)
-            para(d, (x + 20, 262), det, font(21), cw - 48, fill=(207, 214, 222) if on else MUTED)
-            d.text((x + 20, 322), cost, font=font(21, mono=True), fill=(120, 200, 160) if on else GREEN)
-        if t > T * 0.42:
-            k = (t - T * 0.42) / (T * 0.5)
-            panel(d, [90, 400, 1000, 950])
-            d.text((118, 420), "QUESTION", font=font(18, True), fill=MUTED)
-            y = para(d, (118, 452), q, font(27), 850)
-            d.text((118, y + 18), "ANSWER", font=font(18, True), fill=MUTED)
-            if k > 0.75:
-                d.text((118, y + 48), "%s m" % a["answer"], font=font(64, mono=True), fill=INK)
-                para(d, (118, y + 140), (a.get("calc") or "").split("\n\n")[0], font(21), 850, fill=MUTED)
-            panel(d, [1030, 400, W - 90, 950], fill=(247, 248, 250))
-            d.text((1058, 420), "CODE THE MODEL WROTE · RUN ON THE FACTS", font=font(18, True), fill=MUTED)
-            n = int(ease(k * 1.4) * min(len(code), 19))
-            fy = 456
-            for ln in code[:n]:
-                d.text((1058, fy), ln[:66], font=font(19, mono=True), fill=INK)
-                fy += 25
-        return im
-
-    return f
-
-
-def _school(st):
-    ex = next((e for e in st["examples"] if "school" in e["title"].lower()), None)
-    if ex is None:
-        ex = next(e for e in st["examples"] if "scanned image" in e["title"])
-    return ex, Sheet(*sheet_image(st, ex["path"], 5200))
-
-
-def scene_measure(st):
-    ex, sh = _school(st)
-    q = next((x["q"] for x in ex["questions"] if "baseboard" in x["q"]), ex["questions"][0]["q"])
-    a = st["answers"][ex["path"] + "\n" + q]
-    regs = [e for e in a["evidence"] if e.get("kind") == "measured" and len(e.get("poly") or []) > 2]
-    lines = [e for e in a["evidence"] if e.get("kind") == "measured" and len(e.get("poly") or []) == 2]
-    how = (a.get("calc") or "").split("Done by code on the image: ")[-1].split(". The model chose")[0]
-    target = sh.around(regs[0]["bbox"], 0.9, 1120 / 760) if regs else sh.full()
-
-    def f(t, T):
-        im, d = frame()
-        header(d, "Scanned sheet · the model points, code measures", "Sizes are never guessed by eye")
-        k = ease((t - 1.5) / 3.0)
-        box = win(sh.full(), target, k) if t < T * 0.62 else win(target, sh.full(), ease((t - T * 0.62) / 2.0))
+        header(d, "One question, step by step", "“%s”" % (q if len(q) < 74 else q[:72] + "…"))
+        s = [T * 0.14, T * 0.34, T * 0.6, T * 0.8]  # when steps 2, 3, 4 and the answer start
         shapes = []
-        if t > 5.0:
-            fillk = ease((t - 5.0) / 1.5)
-            for e in regs:
-                shapes.append(("poly", e["poly"], GREEN, 0.34 * fillk, 5))
-            for e in lines:
-                shapes.append(("line", e["poly"], ORANGE, 1, 7))
-        v = sh.view(box, (1120, 760), shapes)
-        im.paste(v, (90, 190))
-        d.rectangle([90, 190, 1210, 950], outline=LINE, width=2)
-        panel(d, [1250, 190, W - 90, 950])
-        x, y = 1278, 214
-        d.text((x, y), "QUESTION", font=font(18, True), fill=MUTED)
-        y = para(d, (x, y + 30), q, font(24), 520) + 16
-        items = [(2.5, "1  the model reads the scale and points", "a spot inside each room, the ends of each door opening"),
-                 (5.0, "2  code calibrates", how[:150]),
-                 (7.5, "3  code fills each room to its walls", "\n".join(e["name"] for e in regs[:4])),
-                 (T * 0.66, "4  the model does the arithmetic", (a.get("calc") or "").split("\n\n")[0][:260])]
-        for at, head, body in items:
-            if t > at:
-                d.text((x, y), head, font=font(23, True), fill=GREEN)
-                y = para(d, (x, y + 32), body, font(19), 520, fill=INK) + 14
-        if t > T * 0.8:
-            d.text((x, 860), "%s %s" % (a["answer"], a.get("unit") or ""), font=font(58, mono=True), fill=INK)
+        if t > s[0]:
+            shapes += [("poly", r["poly"], BLUE, 0.3, 4) for r in used]
+        if t > s[2]:
+            shapes += [("box", [(e["bbox"][0], e["bbox"][1]), (e["bbox"][2], e["bbox"][3])], ORANGE, 0.35, 4) for e in doors]
+        im.paste(sh.view(win(sh.full(), focus, ease(t / s[0])), (900, 740), shapes), (90, 200))
+        d.rectangle([90, 200, 990, 940], outline=LINE, width=2)
+        x0, x1 = 1030, W - 90
+        panel(d, [x0, 200, x1, 940])
+        y = 218
+        d.text((x0 + 24, y), "1  ROUTE", font=font(20, True), fill=BLUE)
+        d.text((x0 + 24, y + 30), "not a known form  →  small model: “complex”  →  write code", font=font(22), fill=INK)
+        y += 78
+        if t > s[0]:
+            d.text((x0 + 24, y), "2  ROWS OF THE FACT TABLE THE CODE WILL USE", font=font(20, True), fill=BLUE)
+            y += 32
+            for r in used[:5]:
+                d.text((x0 + 24, y), "%-5s %-14s perimeter %6.2f m   doors %d" % (r["number"], (r["label"] or "")[:14], r["perimeter_m"], r["doors"]), font=font(21, mono=True), fill=INK)
+                y += 30
+            y += 16
+        if t > s[1]:
+            d.text((x0 + 24, y), "3  CODE WRITTEN BY THE MODEL, RUN IN A SANDBOX", font=font(20, True), fill=BLUE)
+            y += 32
+            n = int(ease((t - s[1]) / (s[2] - s[1])) * min(len(code), 9))
+            for ln in code[:n]:
+                d.text((x0 + 24, y), ln[:62], font=font(19, mono=True), fill=INK)
+                y += 26
+            y = max(y, 218 + 78 + 32 + 30 * min(5, len(used)) + 16 + 32 + 26 * 9) + 14
+        if t > s[2]:
+            d.text((x0 + 24, y), "4  THE CODE'S ARITHMETIC", font=font(20, True), fill=BLUE)
+            d.text((x0 + 24, y + 32), "%.2f m of wall  −  %d doors × 0.9 m" % (per, nd), font=font(26, mono=True), fill=INK)
+        if t > s[3]:
+            d.text((x0 + 24, 822), "%s m" % a["answer"], font=font(68, True, mono=True), fill=INK)
+            d.text((x0 + 24, 902), "every room and door used is on the plan · API cost $%.3f" % a.get("cost_usd", 0), font=font(22), fill=MUTED)
         return im
 
     return f
 
 
-def scene_count(st):
-    ex, sh = _school(st)
-    q = next((x["q"] for x in ex["questions"] if "doors" in x["q"].lower()), ex["questions"][0]["q"])
-    a = st["answers"][ex["path"] + "\n" + q]
-    boxes = [e for e in a["evidence"] if e.get("bbox") and e.get("kind") in ("counted", "model box")]
-    boxes.sort(key=lambda e: (round(e["bbox"][1] / ((sh.clip[3] - sh.clip[1]) / 4)), e["bbox"][0]))
-    xs = [b["bbox"][0] for b in boxes] + [b["bbox"][2] for b in boxes]
-    ys = [b["bbox"][1] for b in boxes] + [b["bbox"][3] for b in boxes]
-    area = sh.around([min(xs), min(ys), max(xs), max(ys)], 0.04, 1120 / 760) if boxes else sh.full()
-    names = sorted({e["name"] for e in boxes})
+def scene_scan(st):
+    S = D["scan"]
+    pic = _img(S["image"])
+    sh = Sheet(pic, [0, 0, S["size"][0], S["size"][1]])
+    rooms = [r for r in S["rooms"] if r["poly"] and len(r["poly"]) >= 3]
+    xs = [v for r in rooms for v in (r["bbox"][0], r["bbox"][2])]
+    ys = [v for r in rooms for v in (r["bbox"][1], r["bbox"][3])]
+    focus = sh.around([min(xs), min(ys), max(xs), max(ys)], 0.03, 1120 / 740)
+    pal = [(20, 99, 200), (11, 122, 83), (217, 72, 15), (122, 63, 176), (168, 93, 0), (31, 122, 77)]
+    order = sorted(range(len(rooms)), key=lambda i: (rooms[i]["bbox"][0] // 800, rooms[i]["bbox"][1]))
 
     def f(t, T):
         im, d = frame()
-        header(d, "Scanned sheet · counting piece by piece", "Every counted object is drawn back on the sheet")
-        n = int(ease((t - 3.0) / (T - 5.5)) * len(boxes)) if t > 3.0 else 0
-        shapes = [("box", [(e["bbox"][0], e["bbox"][1]), (e["bbox"][2], e["bbox"][3])], BLUE if "window" in e["name"].lower() else ORANGE, 0.12, 4) for e in boxes[:n]]
-        v = sh.view(area, (1120, 760), shapes)
-        if 1.0 < t < T - 2.0:  # the tile grid
-            dv = ImageDraw.Draw(v)
-            for i in range(1, 4):
-                dv.line([i * 280, 0, i * 280, 760], fill=(20, 32, 46), width=2)
-            for j in range(1, 3):
-                dv.line([0, j * 253, 1120, j * 253], fill=(20, 32, 46), width=2)
-        im.paste(v, (90, 190))
-        d.rectangle([90, 190, 1210, 950], outline=LINE, width=2)
-        panel(d, [1250, 190, W - 90, 950])
-        x, y = 1278, 214
-        d.text((x, y), "QUESTION", font=font(18, True), fill=MUTED)
-        y = para(d, (x, y + 30), q, font(26), 520) + 24
-        for nm in names:
-            c = sum(1 for e in boxes[:n] if e["name"] == nm)
-            col = BLUE if "window" in nm.lower() else ORANGE
-            d.rectangle([x, y + 8, x + 26, y + 34], outline=col, width=5)
-            d.text((x + 44, y), nm.replace("_", " "), font=font(26), fill=INK)
-            fc = font(44, True, mono=True)
-            d.text((W - 118 - d.textlength(str(c), font=fc), y - 8), str(c), font=fc, fill=col)
-            y += 64
-        if t > T - 2.2:
-            d.line([x, y + 6, W - 118, y + 6], fill=LINE, width=2)
-            para(d, (x, y + 22), str(a["answer"]), font(34, True), 520)
+        header(d, "The same table from a scan", "A model lists the rooms and points; code measures each one")
+        n = int(ease((t - 0.8) / (T * 0.7)) * len(order)) if t > 0.8 else 0
+        shapes = [("poly", rooms[i]["poly"], pal[k % len(pal)], 0.38, 3) for k, i in enumerate(order[:n])]
+        if t > T * 0.75:
+            shapes += [("box", [(o["bbox"][0], o["bbox"][1]), (o["bbox"][2], o["bbox"][3])], (20, 32, 46), 0.0, 2) for o in S["objects"] if o["kind"] in ("door", "window")]
+        im.paste(sh.view(focus, (1120, 740), shapes), (90, 200))
+        d.rectangle([90, 200, 1210, 940], outline=LINE, width=2)
+        x0, x1 = 1250, W - 90
+        panel(d, [x0, 200, x1, 940])
+        d.text((x0 + 24, 218), "ROOM", font=font(18, True), fill=MUTED)
+        d.text((x1 - 250, 218), "M²", font=font(18, True), fill=MUTED)
+        d.text((x1 - 130, 218), "PERIM. M", font=font(18, True), fill=MUTED)
+        d.line([x0 + 16, 250, x1 - 16, 250], fill=LINE, width=2)
+        y = 262
+        for k, i in list(enumerate(order[:n]))[-12:]:
+            r = rooms[i]
+            d.rectangle([x0 + 24, y + 6, x0 + 44, y + 26], fill=pal[k % len(pal)])
+            d.text((x0 + 56, y + 2), str(r["label"]).replace("\n", " ")[:20], font=font(21), fill=INK)
+            d.text((x1 - 250, y + 2), "%.1f" % (r["area_m2"] or 0), font=font(21, mono=True), fill=INK)
+            d.text((x1 - 130, y + 2), "%.1f" % (r["perimeter_m"] or 0), font=font(21, mono=True), fill=INK)
+            y += 40
+        if t > T * 0.75:
+            c = S["counts"]
+            d.line([x0 + 16, 800, x1 - 16, 800], fill=LINE, width=2)
+            d.text((x0 + 24, 816), "%d rooms · %d doors · %d windows" % (c["rooms"], c["doors"], c["windows"]), font=font(26, True), fill=INK)
+            para(d, (x0 + 24, 858), "read once for $%.2f; the scale was checked against the scale bar" % S["usd"], font(21), x1 - x0 - 48, fill=MUTED)
         return im
 
     return f
@@ -460,41 +542,57 @@ def scene_count(st):
 def scene_valid(st):
     v = st.get("validation") or {}
     groups = [g for g in v.get("groups", []) if g["key"] != "schedules"]
+    unseen = sum(g["n"] for g in groups)
 
     def f(t, T):
         im, d = frame()
-        header(d, "Validation", "%d questions the system was not built on" % sum(g["n"] for g in groups))
-        al = v.get("all", {"ok": 0, "numeric": 1, "usd": 0})
-        tiles = [("%.1f%%" % (100 * al["ok"] / max(1, al["numeric"])), "of %d numeric answers correct" % al["numeric"]),
-                 ("$%.3f" % al["usd"], "average API cost per question"), ("%d" % len(groups), "kinds of drawings, one interface")]
-        for i, (big, small) in enumerate(tiles):
-            x = 90 + i * 590
-            panel(d, [x, 190, x + 560, 360])
-            d.text((x + 28, 206), big, font=font(76, True, mono=True), fill=INK)
-            d.text((x + 28, 308), small, font=font(23), fill=MUTED)
-        y = 410
-        for i, g in enumerate(groups):
-            if t < 1.5 + i * 0.9:
+        header(d, "Evaluation", "%d questions the system was not built on" % unseen)
+        steps = ["{:,} questions in the dataset".format(D["sample"]["pool"]), "random sample, fixed seed, by drawing kind, question type, language",
+                 "{:,} never used while building".format(unseen)]
+        x = 90
+        for i, s in enumerate(steps):
+            if t < i * 1.2:
                 break
-            k = ease((t - 1.5 - i * 0.9) * 1.6)
-            d.text((90, y + 6), g["label"], font=font(27, True), fill=INK)
-            x0, x1 = 640, 1330
-            d.rectangle([x0, y + 4, x1, y + 44], fill=PANEL, outline=LINE, width=2)
+            fw = font(21)
+            w = d.textlength(s, font=fw) + 36
+            d.rounded_rectangle([x, 196, x + w, 244], 8, fill=PANEL, outline=LINE, width=2)
+            d.text((x + 18, 206), s, font=fw, fill=INK)
+            x += w + 14
+            if i < 2:
+                d.text((x, 204), "→", font=font(26, True), fill=MUTED)
+                x += 44
+        y = 290
+        for i, g in enumerate(groups):
+            if t < 3.0 + i * 1.0:
+                break
+            k = ease((t - 3.0 - i * 1.0) * 1.6)
+            d.text((90, y + 8), g["label"], font=font(27, True), fill=INK)
+            x0, x1 = 600, 1250
+            d.rectangle([x0, y + 4, x1, y + 48], fill=PANEL, outline=LINE, width=2)
             tx = g.get("text") or {}
             nt = sum(tx.get(a, 0) for a in ("correct", "partial", "wrong"))
             if g["numeric"]:
                 share = g["ok"] / g["numeric"]
-                d.rectangle([x0, y + 4, x0 + (x1 - x0) * share * k, y + 44], fill=GREEN)
+                d.rectangle([x0, y + 4, x0 + (x1 - x0) * share * k, y + 48], fill=GREEN)
                 lab = "%d / %d  (%.1f%%)" % (g["ok"], g["numeric"], 100 * share)
-            elif nt:
-                c, p = tx.get("correct", 0) / nt, tx.get("partial", 0) / nt
-                d.rectangle([x0, y + 4, x0 + (x1 - x0) * c * k, y + 44], fill=GREEN)
-                d.rectangle([x0 + (x1 - x0) * c * k, y + 4, x0 + (x1 - x0) * (c + p) * k, y + 44], fill=(200, 140, 20))
-                lab = "%d right, %d partly, of %d" % (tx.get("correct", 0), tx.get("partial", 0), nt)
             else:
-                lab = ""
-            d.text((x1 + 24, y + 8), lab, font=font(24, mono=True), fill=INK)
-            y += 84
+                c, p = tx.get("correct", 0) / max(1, nt), tx.get("partial", 0) / max(1, nt)
+                d.rectangle([x0, y + 4, x0 + (x1 - x0) * c * k, y + 48], fill=GREEN)
+                d.rectangle([x0 + (x1 - x0) * c * k, y + 4, x0 + (x1 - x0) * (c + p) * k, y + 48], fill=(200, 140, 20))
+                lab = "%d right, %d partly / %d" % (tx.get("correct", 0), tx.get("partial", 0), nt)
+            d.text((x1 + 20, y + 12), lab, font=font(22, mono=True), fill=INK)
+            d.text((W - 90 - 130, y + 12), "$%.3f / q" % g["usd"], font=font(22, mono=True), fill=MUTED)
+            y += 78
+        al = v.get("all", {"ok": 0, "numeric": 1, "usd": 0})
+        if t > 3.0 + len(groups) * 1.0:
+            tiles = [("%.1f%%" % (100 * al["ok"] / max(1, al["numeric"])), "of %d numeric answers correct" % al["numeric"]),
+                     ("%.1f¢" % (al["usd"] * 100), "average API cost per question"), ("$%.0f" % v.get("usd", 0), "for the whole evaluation run"),
+                     ("72%", "Opus 5.5 on image + question (50 other questions)")]
+            for i, (big, small) in enumerate(tiles):
+                x = 90 + i * 440
+                panel(d, [x, 720, x + 416, 900])
+                d.text((x + 24, 736), big, font=font(72, True, mono=True), fill=INK if i < 3 else MUTED)
+                para(d, (x + 24, 838), small, font(20), 370, fill=MUTED)
         return im
 
     return f
@@ -513,7 +611,7 @@ def scene_close(st):
     return f
 
 
-SCENES = {"hook": scene_hook, "idea": scene_idea, "vector": scene_vector, "ladder": scene_ladder, "measure": scene_measure, "count": scene_count,
+SCENES = {"task": scene_task, "motive": scene_motive, "facts": scene_facts, "lanes": scene_lanes, "ladder": scene_ladder, "case": scene_case, "scan": scene_scan,
           "valid": scene_valid, "close": scene_close}
 
 
@@ -526,9 +624,10 @@ def validation_line(st):
         return "%d percent" % round(100 * g[k]["ok"] / max(1, g[k]["numeric"])) if k in g and g[k]["numeric"] else "unknown"
 
     cents = al["usd"] * 100
-    return ("On %d questions it was not built on, %d percent of numeric answers are correct, at about %s a question. "
-            "Vector plans and building models are near perfect. Images reach %s, scans %s. We show the hard numbers too."
-            % (sum(x["n"] for x in v.get("groups", []) if x["key"] != "schedules"), round(100 * al["ok"] / max(1, al["numeric"])), ("%.1f cents" % cents) if cents >= 0.1 else "a tenth of a cent", pc("images"), pc("scans")))
+    return ("We test on %d questions the system was not built on, drawn at random across every kind of drawing and eight languages. "
+            "%d percent of the numeric answers are correct, at about %s a question. Vector plans and building models are near perfect. Scans are the hardest, at %s."
+            % (sum(x["n"] for x in v.get("groups", []) if x["key"] != "schedules"), round(100 * al["ok"] / max(1, al["numeric"])),
+               ("%.1f cents" % cents) if cents >= 0.1 else "a tenth of a cent", pc("scans")))
 
 
 def speak(text, out_wav):
@@ -562,8 +661,9 @@ def main(static_path, out_dir, voice=True, only=None):
     import imageio_ffmpeg
 
     st = load_static(static_path)
+    D.update(json.load(open(os.path.join(out_dir, "video_data.json"))))
     os.makedirs(os.path.join(out_dir, "voice"), exist_ok=True)
-    script = [(k, t if t is not None else validation_line(st)) for k, t in SCRIPT if only is None or k in only]
+    script = [(k, t if t is not None else validation_line(st)) for k, t in SCRIPT if (only is None or k in only) and (k != "scan" or "scan" in D)]
     clips, rate = [], 24000
     for k, text in script:
         wav = os.path.join(out_dir, "voice", k + ".wav")
@@ -647,11 +747,10 @@ def scene_limits(st):
 
 
 def deck(static_path, out_pdf):
-    """The pitch deck: the film's key frames as slides, plus cost and limits."""
+    """The pitch deck: the film's scenes at their last frame, plus cost and limits."""
     st = load_static(static_path)
-    slides = []
-    for k in ("hook", "idea", "vector", "ladder", "measure", "count", "valid"):
-        slides.append(SCENES[k](st)(1000.0, 1000.0).convert("RGB"))
+    D.update(json.load(open(os.path.join(os.path.dirname(out_pdf), "video_data.json"))))
+    slides = [SCENES[k](st)(1000.0, 1000.0).convert("RGB") for k, _ in SCRIPT if k != "close" and (k != "scan" or "scan" in D)]
     slides.append(scene_limits(st)(0, 1))
     slides.append(scene_close(st)(0, 1))
     slides[0].save(out_pdf, save_all=True, append_images=slides[1:], resolution=150.0)

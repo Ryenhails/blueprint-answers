@@ -241,6 +241,11 @@ def facts_text(kind, full):
             import plan_facts
             import raster_ingest
 
+            if big_sheet(full):
+                import scan_facts
+
+                rec = raster_ingest._load(scan_facts.STORE).get(raster_ingest._key(full))
+                return (agent.describe(rec["tables"]), "approximate") if rec and "tables" in rec else (None, "exact")
             if raster_ingest._key(full) in raster_ingest._load(plan_facts.STORE):
                 return agent.describe(plan_facts.image_view(full)[0]), "approximate"
     except Exception:
@@ -306,7 +311,22 @@ def ask(path, question, llm=None, table_llm=None, raster=None, agent=None, visio
         else:
             _step(res, 2, "no schedules on this sheet", answered=False)
     elif kind == "raster" and big_sheet(full):
-        _step(res, 0, "a full scanned sheet: nothing is stored for it", answered=False)  # read piece by piece below
+        # a full scanned sheet: read once into the floor-plan fact table; sheets that are not floor plans stay with the reading step
+        import scan_facts
+
+        try:
+            rec, fresh = scan_facts.ensure(full)
+        except Exception as e:
+            rec, fresh = {"outlier": "the sheet could not be read into facts (%s)" % str(e)[:60], "usd": 0.0, "tokens": 0}, False
+        if fresh:
+            res.update({"cost_usd": rec["usd"], "llm_tokens": rec["tokens"]})
+        if "tables" in rec:
+            _step(res, 0, ("the scan was read into the floor-plan fact table just now" if fresh else "the scan's fact table is stored") + "; not a question form seen before", answered=False)
+            if agent is not None:
+                _escalate(res, agent(full, question))
+                _step(res, 2, res.get("note") or "code on the fact table read from the scan")
+        else:
+            _step(res, 0, rec["outlier"] + ": no fact table, read per question", answered=False)
     elif kind == "raster" and raster is not None:
         res.update(raster(full, question))
         if res.get("kind_from") == "decision model":

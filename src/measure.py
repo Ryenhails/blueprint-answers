@@ -129,27 +129,48 @@ def _work(full):
         dark &= (rgb.max(axis=2) - rgb.min(axis=2)) < 60
     dark = dark.astype(np.uint8)
     n, labels = cv2.connectedComponents(1 - dark, connectivity=4)
-    out = (dark, labels, f, (W, H), g, np.bincount(labels.ravel()))
+    runs = []  # width of the thin drawn lines, in working pixels: rooms are measured to the middle of the line that bounds them
+    for row in dark[::9]:
+        e = np.diff(np.concatenate([[0], row, [0]]))
+        runs.append(np.where(e == -1)[0] - np.where(e == 1)[0])
+    runs = np.concatenate(runs) if runs else np.array([1])
+    thin = runs[runs <= 8]
+    out = (dark, labels, f, (W, H), g, np.bincount(labels.ravel()), float(np.median(thin)) if len(thin) else 1.0)
     _img.clear()  # one sheet in memory at a time
     _img[full] = out
     return out
 
 
-def region(full, y, x, mpp):
-    """Flood fill from (y, x) in 0-1000 coordinates. -> dict(area_m2, perimeter_m, bbox, poly) in original pixels, or {"error"}"""
-    import cv2
+def label_at(full, y, x, mpp):
+    """Id of the free-space region at (y, x) in 0-1000 coordinates, or None on a wall."""
     import numpy as np
 
-    dark, labels, f, (W, H), gray, sizes = _work(full)
+    dark, labels, f, (W, H), gray, sizes, stroke = _work(full)
     h, w = dark.shape
     px, py = int(x / 1000.0 * (w - 1)), int(y / 1000.0 * (h - 1))
     r = max(3, int(0.25 / (mpp * f)))  # look 25 cm around the spot: it may sit on a label or a furniture line
     win = labels[max(0, py - r):py + r + 1, max(0, px - r):px + r + 1]
     ids = win[win > 0]
-    if ids.size == 0:
+    return int(np.bincount(ids).argmax()) if ids.size else None
+
+
+def region(full, y, x, mpp, others=None):
+    """Flood fill from (y, x) in 0-1000 coordinates. -> dict(area_m2, perimeter_m, bbox, poly) in original pixels, or {"error"}
+    others: region ids of the other rooms of the sheet when they are all known (label_at). Then a piece that no room
+    sits in (behind a bathtub, a kitchen run, a wardrobe) joins its neighbour even when it is larger than 1 m²."""
+    import cv2
+    import numpy as np
+
+    dark, labels, f, (W, H), gray, sizes, stroke = _work(full)
+    h, w = dark.shape
+    lab = label_at(full, y, x, mpp)
+    if lab is None:
         return {"error": "the spot is on a solid line or wall"}
-    lab = int(np.bincount(ids).argmax())
     big = max(1, int(1.0 / (mpp * f) ** 2))  # regions of 1 m² or more are rooms of their own; smaller ones are pieces of a room
+
+    def own_room(o):
+        return sizes[o] >= big if others is None else (o in others or sizes[o] >= 3 * big)
+
     mask = (labels == lab).astype(np.uint8)
     edge = mask[0].any() or mask[-1].any() or mask[:, 0].any() or mask[:, -1].any()
     if edge or mask.sum() > 0.35 * h * w:
@@ -162,7 +183,7 @@ def region(full, y, x, mpp):
         near = np.unique(labels[y0:y1, x0:x1][cv2.dilate(mask[y0:y1, x0:x1], thin) > 0])
         add = []
         for o in (near if len(near) < 400 else []):
-            if o <= 0 or sizes[o] >= big or sizes[o] < 4:
+            if o <= 0 or own_room(o) or sizes[o] < 4:
                 continue
             piece = (labels[y0:y1, x0:x1] == o).astype(np.uint8)
             if mask[y0:y1, x0:x1][piece > 0].any():
@@ -181,11 +202,11 @@ def region(full, y, x, mpp):
     m, d, lb = mask[y0:y1, x0:x1], dark[y0:y1, x0:x1], labels[y0:y1, x0:x1]
     wall = cv2.morphologyEx(d, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (t, t)))
     closed = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
-    others = np.zeros_like(m)
+    taken = np.zeros_like(m)
     for o in np.unique(lb[(closed > 0) & (m == 0) & (lb > 0)]):  # other rooms are never taken in
-        if sizes[o] >= big:
-            others |= (lb == o).astype(np.uint8)
-    full_m = ((closed > 0) & (wall == 0) & (others == 0)).astype(np.uint8)
+        if own_room(o):
+            taken |= (lb == o).astype(np.uint8)
+    full_m = ((closed > 0) & (wall == 0) & (taken == 0)).astype(np.uint8)
     n, cc = cv2.connectedComponents(full_m, connectivity=8)
     if n > 2:
         full_m = (cc == cc[m > 0][0]).astype(np.uint8)
@@ -212,7 +233,8 @@ def region(full, y, x, mpp):
     poly = cv2.approxPolyDP(c, 1.5, True)[:, 0, :]
     P = [[float((p[0] + x0) * f), float((p[1] + y0) * f)] for p in poly]
     xs2, ys2 = [p[0] for p in P], [p[1] for p in P]
-    return {"area_m2": round((float(filled.sum()) + edge_px) * s * s, 2), "perimeter_m": round(float(cv2.arcLength(poly.reshape(-1, 1, 2), True)) * s, 2),
+    per_px = float(cv2.arcLength(poly.reshape(-1, 1, 2), True))
+    return {"area_m2": round((float(filled.sum()) + edge_px + per_px * stroke / 2) * s * s, 2), "perimeter_m": round(per_px * s, 2),
             "bbox": [min(xs2), min(ys2), max(xs2), max(ys2)], "poly": P, "method": "enclosed region"}
 
 
