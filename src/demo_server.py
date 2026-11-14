@@ -1,0 +1,347 @@
+"""Demo front end.
+
+  python demo_server.py serve [port] --gemini          all model steps through the Gemini API (key in GEMINI_API_KEY or api.txt)
+  python demo_server.py serve [port] [--plan-model ID] [--table-model ID]
+                                             live demo on http://localhost:8765. Without the model options it needs no GPU:
+                                             known question forms, IFC and vector plans are answered exactly, and
+                                             model-backed answers come from data/answer_cache.json
+  python demo_server.py export <out.html>    one self-contained HTML file with precomputed examples (works offline)
+
+The page (demo.html) is the same in both modes; in the exported file the data is embedded.
+"""
+import base64
+import collections
+import json
+import os
+import re
+import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import evalkit  # noqa: E402
+import ifc_adapter  # noqa: E402
+import swiss_adapter  # noqa: E402
+import system  # noqa: E402
+
+ANSWER_CACHE = os.path.join(evalkit.ROOT, "data", "answer_cache.json")  # model-backed answers computed on a GPU node
+
+EXAMPLES = [
+    ("swiss", "Apartment floor, 6 units (French)", "data/swiss_dwellings/site492_bldg1175_floor5187.pdf"),
+    ("swiss", "Apartment floor (German)", "data/swiss_dwellings/site1088_bldg2216_floor10132.pdf"),
+    ("swiss", "Apartment floor (Italian)", "data/swiss_dwellings/site339_bldg710_floor3024.pdf"),
+    ("ifc", "FZK-Haus, ground floor (BIM model)", "data/ifc_models/kit-fzk-haus_ac20-fzk-haus_plan-01-erdgeschoss.pdf"),
+    ("ifc", "Esplanades housing, 2nd floor (BIM model)", "data/ifc_models/bsc-esplanades_1807-ep-ar-v18_plan-02-2-korrus.pdf"),
+    ("raster", "Finnish flat, colour scan (raster)", "data/cubicasa5k/colorful-12002.png"),
+    ("raster", "Finnish house, line drawing (raster)", "data/cubicasa5k/high_quality_architectural-13086.png"),
+    ("table", "Sports complex, door and finish schedules", "data/opening_design/Sports_Complex/Sheets - Current Set/A-801 - Door and Finish Schedules & Wall Types.pdf"),
+    ("table", "Cannery Trail Residences, schedules", "data/opening_design/CTR/Most Current Set/Full size sheets/A700 - SCHEDULES.pdf"),
+]
+SCAN = "data/swiss_dwellings/site1000_bldg2082_floor9385.png"
+EXAMPLES += [
+    ("raster", "Apartment floor as a scanned image (PNG)", SCAN),
+    ("ifc", "Duplex apartment, IFC model (open questions)", "data/ifc_bench/duplex_arc.ifc"),
+]
+# Sheets the organisers posted as examples of harder questions. Shown in the live demo when the folder is there;
+# left out of the exported page unless asked for (their licences are not known to us).
+ORG = os.path.join(evalkit.ROOT, "extrainfo")
+ORGANISER = [
+    ("raster", "School plan, level 00 (organiser example, scan)", "uk_dfe_sen-dfe-xx-00-d-x-0201-special_school_plan_level_00-a-c01_p001.png",
+     ["What is the floor area of the Multi-Purpose Hall, in m²?", "What is the total floor area of all Secondary Classrooms, in m²?",
+      "How many linear metres of baseboard are needed for the Library and the Fitness Room, leaving out the door openings?", "How many doors and how many windows are on this floor?"]),
+    ("raster", "Foundation and slab plan (organiser example, scan)", "us_aw_078-24-33_p056.png",
+     ["What is the slab area by slab type (thickness and reinforcing bars), in m²?", "What is the total length of trenches shown on this plan, in metres?"]),
+    ("raster", "Piping plan (organiser example, scan)", "us_aw_078-24-28_march_2020_p096.png",
+     ["How many fuelling pumps and check valves are shown, and what are the sizes of the suction header and the pump discharge header?", "How many pressure gauges (PG) are shown on the piping plan?"]),
+    ("raster", "Dormitory, second floor (organiser example, scan)", "us_daf_dorm_sd_drawings_april_2026_p003.png",
+     ["What is the floor area of each wing and of the common space, and how many dorm rooms are on this floor?"]),
+]
+CUSTOM = {
+    "data/ifc_bench/duplex_arc.ifc": ["What type of insulation is used in the external walls, and how thick is it?", "Which room in the building is the largest?",
+                                      "Which door types are installed in the building, with their quantities?", "Combien de chambres y a-t-il, et quelle est leur surface totale ?"],
+    SCAN: ["What is the net floor area of room 2.16, which has no area printed?", "Which apartment is the largest, and how big is it?"],
+}
+WITH_ORGANISER = True
+EXTRA = os.path.join(evalkit.ROOT, "data", "demo_extra.json")  # optional: more examples (e.g. raster) added by other modules
+
+_q = None
+_cache = None
+BACKENDS = {}  # filled by `serve --plan-model X --table-model Y` when a GPU is available
+
+
+def questions_for(path, limit=12):
+    """Dataset questions for a drawing, spread over question forms and languages."""
+    global _q
+    if _q is None:
+        _q = collections.defaultdict(list)
+        for r in evalkit.load_questions():
+            _q[r["path"]].append(r)
+    seen, out = set(), []
+    rows = _q.get(path, [])
+    for r in rows:
+        t = system.normalise_q(re.sub(r"\d+", "#", r["question"]))[0]
+        if t in seen:
+            continue
+        seen.add(t)
+        out.append({"q": r["question"], "gold": r["answer"], "unit": r["unit"], "type": r["type"]})
+    step = max(1, len(out) // limit)
+    return out[::step][:limit]
+
+
+def answer_cache():
+    global _cache
+    if _cache is None:
+        _cache = json.load(open(ANSWER_CACHE)) if os.path.exists(ANSWER_CACHE) else {}
+    return _cache
+
+
+def _full(path):
+    return path if os.path.isabs(path) else os.path.join(evalkit.DATA, path)
+
+
+def examples():
+    ex = [{"kind": k, "title": t, "path": p, "questions": questions_for(p, 4 if "ifc_bench" in p else 12)} for k, t, p in EXAMPLES]
+    for e in ex:
+        if e["path"] == SCAN:  # the scan is asked the dataset questions of its vector twin: same gold answers
+            e["questions"] = [q for q in questions_for(SCAN[:-4] + ".pdf", 40) if q["q"].split()[0] in ("How", "What")][:9]
+            e["twin"] = SCAN[:-4] + ".pdf"
+        e["questions"] += [{"q": q, "gold": None, "unit": None, "type": "other", "model": True} for q in CUSTOM.get(e["path"], [])]
+    if WITH_ORGANISER:
+        for k, t, name, qs in ORGANISER:
+            if os.path.exists(os.path.join(ORG, name)):
+                ex.append({"kind": k, "title": t, "path": os.path.join(ORG, name), "questions": [{"q": q, "gold": None, "unit": None, "type": "other", "model": True} for q in qs]})
+    for key, v in answer_cache().items():  # questions that were answered by a model (paraphrases etc.)
+        p, q = key.split("\n", 1)
+        for e in ex:
+            if e["path"] == p and not any(x["q"] == q for x in e["questions"]):
+                e["questions"].append({"q": q, "gold": v.get("gold"), "unit": v.get("unit"), "type": v.get("type"), "model": True})
+    if os.path.exists(EXTRA):
+        ex += json.load(open(EXTRA)).get("examples", [])
+    return ex
+
+
+def _b64(data, mime):
+    return "data:%s;base64,%s" % (mime, base64.b64encode(data).decode())
+
+
+def drawing(path, width=1700):
+    """-> {"mode": "image", "clip": [x0,y0,x1,y1], "image": dataURL} or {"mode": "svg", "svg": text}.
+    Evidence coordinates returned by ask() are in the same coordinate system as `clip`."""
+    import fitz
+
+    if os.path.exists(EXTRA):
+        extra = json.load(open(EXTRA)).get("drawings", {})
+        if path in extra:
+            return extra[path]
+    full = _full(path)
+    kind = system.kind_of(path)
+    if kind == "ifc":
+        svg = re.sub(r"\.(pdf|png)$", ".svg", full)
+        if svg.endswith(".svg") and os.path.exists(svg):
+            return {"mode": "svg", "svg": open(svg, encoding="utf-8").read()}
+    if path.lower().endswith(".pdf"):
+        page = fitz.open(full)[0]
+        clip = page.rect
+        if kind == "swiss":
+            words = page.get_text("words")
+            leg = [w[1] for w in words if swiss_adapter.LEGEND_RE.match(w[4])]
+            ytop = (min(leg) - 12) if leg else page.rect.height * 0.82
+            xs = [w for w in words if w[1] < ytop]
+            clip = fitz.Rect(min(w[0] for w in xs) - 50, min(w[1] for w in xs) - 50, max(w[2] for w in xs) + 50, max(w[3] for w in xs) + 50) & page.rect
+        z = width / clip.width
+        pix = page.get_pixmap(clip=clip, matrix=fitz.Matrix(z, z))
+        if kind == "table":
+            return {"mode": "image", "clip": list(clip), "image": _b64(pix.tobytes("jpeg", jpg_quality=72), "image/jpeg")}
+        return {"mode": "image", "clip": list(clip), "image": _b64(pix.tobytes("png"), "image/png")}
+    if path.lower().endswith(system.RASTER):
+        import io
+
+        from PIL import Image
+
+        Image.MAX_IMAGE_PIXELS = None
+        im = Image.open(full)
+        W, H = im.size
+        if max(W, H) <= 2600 and path.lower().endswith((".png", ".jpg", ".jpeg")):
+            mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
+            return {"mode": "image", "clip": [0, 0, W, H], "image": _b64(open(full, "rb").read(), mime)}
+        im = im.convert("RGB")  # a full scanned sheet: shown smaller, coordinates stay those of the original
+        im.thumbnail((3400, 3400), Image.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=80)
+        return {"mode": "image", "clip": [0, 0, W, H], "image": _b64(buf.getvalue(), "image/jpeg")}
+    return {"mode": "none"}
+
+
+def ask(path, question):
+    key = path + "\n" + question
+    res = system.ask(path, question, **BACKENDS)
+    if res.get("answer") is None and key in answer_cache():
+        res = dict(answer_cache()[key])
+        res["precomputed"] = True
+    for e in res.get("evidence", []):
+        if e.get("bbox") is not None:
+            e["bbox"] = [round(float(v), 2) for v in e["bbox"]]
+        if e.get("poly"):
+            e["poly"] = [[round(float(x), 2), round(float(y), 2)] for x, y in e["poly"]]
+    gpath = SCAN[:-4] + ".pdf" if path == SCAN else path
+    gold = next((x for x in questions_for(gpath, 10 ** 6) if x["q"] == question), None)
+    path = gpath
+    if gold is None and _q is not None:
+        gold = next(({"gold": r["answer"], "type": r["type"]} for r in _q.get(path, []) if r["question"] == question), None)
+    if gold:
+        res["gold"] = gold["gold"]
+        res["correct"] = None if gold["type"] == "text" else evalkit.is_correct(res["answer"], gold["gold"], gold["type"]) if res.get("answer") is not None else False
+    elif res.get("gold") is not None and res.get("type"):  # a re-phrased question: compared with the dataset question it restates
+        res["correct"] = evalkit.is_correct(res["answer"], res["gold"], res["type"]) if res.get("answer") is not None else False
+    return json.loads(json.dumps(res, ensure_ascii=False, default=str))
+
+
+def gemini_backends():
+    """Every model-backed step through the Google API; no GPU needed."""
+    import agent
+    import llm_plan
+    import raster_ingest
+    import table_adapter
+    import vision
+
+    BACKENDS["llm"] = llm_plan.make_llm(os.environ.get("STOA_PLAN_MODEL", "gemini-3.1-flash-lite"))  # decides: simple query, complex, or not in the plan
+    BACKENDS["agent"] = agent.make_agent()  # complex questions: code on the fact tables
+    BACKENDS["table_llm"] = table_adapter.make_table_llm(os.environ.get("STOA_TABLE_MODEL", "gemini-3.8-flash"))
+    BACKENDS["raster"] = raster_ingest.answer  # images: one read per drawing, then answers from the stored facts
+    BACKENDS["vision"] = vision.answer  # last resort: read the sheet for this one question
+
+
+_updir = None
+
+
+def upload(name, data):
+    """Keep an uploaded drawing in a temporary folder (outside the project) and describe it like an example."""
+    global _updir
+    import tempfile
+    from urllib.parse import unquote
+
+    name = re.sub(r"[^A-Za-z0-9._ -]", "_", os.path.basename(unquote(name)))[-80:]
+    if not name.lower().endswith((".pdf", ".ifc") + system.RASTER):
+        raise ValueError("Upload a PDF, an image (PNG, JPG, TIFF) or an IFC model.")
+    if len(data) > 40 * 1024 * 1024:
+        raise ValueError("The file is larger than 40 MB.")
+    if _updir is None:
+        _updir = tempfile.mkdtemp(prefix="stoa_upload_")
+    full = os.path.join(_updir, name)
+    with open(full, "wb") as f:
+        f.write(data)
+    return {"kind": system.kind_of(full), "title": name, "path": full, "questions": [], "uploaded": True}
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _send(self, body, ctype="application/json; charset=utf-8", code=200):
+        data = body if isinstance(body, bytes) else body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        from urllib.parse import parse_qs, urlparse
+
+        u = urlparse(self.path)
+        try:
+            if u.path == "/":
+                self._send(page_html(None), "text/html; charset=utf-8")
+            elif u.path == "/api/examples":
+                self._send(json.dumps(examples(), ensure_ascii=False))
+            elif u.path == "/api/validation":
+                self._send(json.dumps(validation(), ensure_ascii=False))
+            elif u.path == "/api/drawing":
+                self._send(json.dumps(drawing(parse_qs(u.query)["path"][0])))
+            else:
+                self._send("{}", code=404)
+        except Exception as e:
+            self._send(json.dumps({"error": repr(e)}), code=500)
+
+    def do_POST(self):
+        if self.path.startswith("/api/upload"):
+            try:
+                self._send(json.dumps(upload(self.headers.get("X-Filename", "upload"), self.rfile.read(int(self.headers.get("Content-Length", 0)))), ensure_ascii=False))
+            except Exception as e:
+                self._send(json.dumps({"error": str(e)}), code=400)
+            return
+        try:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+            self._send(json.dumps(ask(body["path"], body["question"]), ensure_ascii=False))
+        except Exception as e:
+            self._send(json.dumps({"error": repr(e)}), code=500)
+
+
+def validation():
+    try:
+        import valset
+
+        return valset.summary()
+    except Exception:
+        return None
+
+
+def page_html(static):
+    html = open(os.path.join(HERE, "demo.html"), encoding="utf-8").read()
+    payload = "null" if static is None else json.dumps(static, ensure_ascii=False).replace("</", "<\\/")
+    html = html.replace("/*__STATIC__*/null", payload)
+    if static is None:  # served locally: needs a full document
+        html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'></head><body>" + html + "</body></html>"
+    return html
+
+
+def export(out):
+    ex = examples()
+    static = {"examples": ex, "drawings": {}, "answers": {}, "validation": validation()}
+    old = {}
+    if "--reuse" in sys.argv:  # keep the answers of an earlier export (they cost API calls); only missing or empty ones are asked again
+        h = open(sys.argv[sys.argv.index("--reuse") + 1], encoding="utf-8").read()
+        i, j = h.index("const STATIC = ") + 15, h.index(";\nconst $ =")
+        old = {k: v for k, v in json.loads(h[i:j].replace("<\\/", "</"))["answers"].items() if v.get("answer") is not None and v.get("trace")}
+    for e in ex:
+        static["drawings"][e["path"]] = drawing(e["path"], width=1500)
+        for q in e["questions"]:
+            key = e["path"] + "\n" + q["q"]
+            static["answers"][key] = old[key] if key in old else ask(e["path"], q["q"])
+    html = page_html(static)
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(html)
+    n = sum(len(e["questions"]) for e in ex)
+    ok = sum(1 for a in static["answers"].values() if a.get("correct"))
+    usd = sum(a.get("cost_usd") or 0 for a in static["answers"].values())
+    print("API cost of the answers in this export: $%.2f" % usd)
+    print("wrote %s: %.1f MB, %d drawings, %d questions (%d match the dataset answer)" % (out, os.path.getsize(out) / 1e6, len(ex), n, ok))
+
+
+if __name__ == "__main__":
+    a = sys.argv[1:]
+    if a[:1] == ["serve"]:
+        port = int(a[1]) if len(a) > 1 and a[1].isdigit() else 8765
+        if "--plan-model" in a:
+            import llm_plan
+            BACKENDS["llm"] = llm_plan.make_llm(a[a.index("--plan-model") + 1])
+        if "--gemini" in a:
+            gemini_backends()
+        if "--table-model" in a:
+            import table_adapter
+            BACKENDS["table_llm"] = table_adapter.make_table_llm(a[a.index("--table-model") + 1])
+        if "raster" not in BACKENDS:
+            try:
+                import raster_backend
+                BACKENDS["raster"] = raster_backend.answer
+            except Exception:
+                pass
+        print("demo on http://localhost:%d  (Ctrl-C to stop)" % port)
+        ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    elif a[:1] == ["export"] and len(a) >= 2:
+        WITH_ORGANISER = "--with-organiser" in a
+        if "--gemini" in a:
+            gemini_backends()
+        export(a[1])
+    else:
+        print(__doc__)

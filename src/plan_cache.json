@@ -1,0 +1,988 @@
+{
+ "How many rooms labelled <Q> are there on this floor?": {
+  "op": "count",
+  "entity": "room",
+  "by": "label"
+ },
+ "How many apartments (residential units) are shown on this floor plan?": {
+  "op": "count",
+  "entity": "apartment"
+ },
+ "How many doors (interior doors and entrance doors together) are drawn on this floor plan?": {
+  "op": "count",
+  "entity": "door"
+ },
+ "How many windows are drawn on this floor plan?": {
+  "op": "count",
+  "entity": "window"
+ },
+ "How many toilets (WC) are drawn on this floor plan?": {
+  "op": "count",
+  "entity": "toilet"
+ },
+ "How many washbasins are drawn on this floor plan?": {
+  "op": "count",
+  "entity": "washbasin"
+ },
+ "How many bathtubs are drawn on this floor plan?": {
+  "op": "count",
+  "entity": "bathtub"
+ },
+ "How many showers are drawn on this floor plan?": {
+  "op": "count",
+  "entity": "shower"
+ },
+ "What is the net floor area of room <R> (<Q>) in m²?": {
+  "op": "area",
+  "entity": "room",
+  "by": "number"
+ },
+ "What is the total net area in m² of all rooms labelled <Q> on this floor?": {
+  "op": "area",
+  "entity": "room",
+  "by": "label"
+ },
+ "What is the net floor area of apartment <L> in m², summing all its rooms except balconies, loggias, terraces and other outdoor spaces?": {
+  "op": "area",
+  "entity": "room",
+  "by": "apartment"
+ },
+ "What is the total net floor area in m² of all numbered indoor rooms on this floor (excluding balconies, loggias, terraces and other outdoor spaces, shafts and voids)?": {
+  "op": "area",
+  "entity": "room",
+  "by": "floor"
+ },
+ "Wie viele Wohnungen sind auf diesem Grundriss dargestellt?": {
+  "op": "count",
+  "entity": "apartment"
+ },
+ "Wie viele Räume mit der Bezeichnung <Q> gibt es in diesem Geschoss?": {
+  "op": "count",
+  "entity": "room",
+  "by": "label"
+ },
+ "Wie viele Türen (Innentüren und Eingangstüren zusammen) sind auf diesem Grundriss eingezeichnet?": {
+  "op": "count",
+  "entity": "door"
+ },
+ "Wie viele Fenster sind auf diesem Grundriss eingezeichnet?": {
+  "op": "count",
+  "entity": "window"
+ },
+ "Wie viele WCs sind auf diesem Grundriss eingezeichnet?": {
+  "op": "count",
+  "entity": "toilet"
+ },
+ "Wie viele Lavabos sind auf diesem Grundriss eingezeichnet?": {
+  "op": "count",
+  "entity": "washbasin"
+ },
+ "Wie viele Badewannen sind auf diesem Grundriss eingezeichnet?": {
+  "op": "count",
+  "entity": "bathtub"
+ },
+ "Wie viele Duschen sind auf diesem Grundriss eingezeichnet?": {
+  "op": "count",
+  "entity": "shower"
+ },
+ "Wie gross ist die Nettofläche von Raum <R> (<Q>) in m²?": {
+  "op": "area",
+  "entity": "room",
+  "by": "number"
+ },
+ "Wie gross ist die Nettowohnfläche von Wohnung <L> in m² (Summe aller Räume ohne Balkone, Loggien, Terrassen und andere Aussenräume)?": {
+  "op": "area",
+  "entity": "room",
+  "by": "apartment"
+ },
+ "Wie gross ist die gesamte Nettofläche in m² aller Räume mit der Bezeichnung <Q> in diesem Geschoss?": {
+  "op": "area",
+  "entity": "room",
+  "by": "label"
+ },
+ "Wie gross ist die gesamte Nettogeschossfläche in m² aller nummerierten Innenräume dieses Geschosses (ohne Balkone, Loggien, Terrassen und andere Aussenräume, Schächte und Lufträume)?": {
+  "op": "area",
+  "entity": "room",
+  "by": "floor"
+ },
+ "Quanti appartamenti (unità abitative) sono rappresentati in questa pianta?": {
+  "op": "count",
+  "entity": "apartment"
+ },
+ "Quanti locali con la denominazione <Q> ci sono in questo piano?": {
+  "op": "count",
+  "entity": "room",
+  "by": "label"
+ },
+ "Quante porte (porte interne e porte d'ingresso insieme) sono disegnate in questa pianta?": {
+  "op": "count",
+  "entity": "door"
+ },
+ "Quante finestre sono disegnate in questa pianta?": {
+  "op": "count",
+  "entity": "window"
+ },
+ "Quanti WC sono disegnati in questa pianta?": {
+  "op": "count",
+  "entity": "toilet"
+ },
+ "Quanti lavabi sono disegnati in questa pianta?": {
+  "op": "count",
+  "entity": "washbasin"
+ },
+ "Quante vasche da bagno sono disegnate in questa pianta?": {
+  "op": "count",
+  "entity": "bathtub"
+ },
+ "Qual è la superficie netta del locale <R> (<Q>) in m²?": {
+  "op": "area",
+  "entity": "room",
+  "by": "number"
+ },
+ "Qual è la superficie netta dell'appartamento <L> in m² (somma di tutti i locali, esclusi balconi, logge, terrazze e altri spazi esterni)?": {
+  "op": "area",
+  "entity": "room",
+  "by": "apartment"
+ },
+ "Qual è la superficie netta totale in m² di tutti i locali denominati <Q> in questo piano?": {
+  "op": "area",
+  "entity": "room",
+  "by": "label"
+ },
+ "Qual è la superficie netta totale in m² di tutti i locali interni numerati di questo piano (esclusi balconi, logge, terrazze e altri spazi esterni, cavedi e vuoti)?": {
+  "op": "area",
+  "entity": "room",
+  "by": "floor"
+ },
+ "Combien d'appartements (logements) figurent sur ce plan d'étage ?": {
+  "op": "count",
+  "entity": "apartment"
+ },
+ "Combien de pièces portant la désignation <Q> y a-t-il à cet étage ?": {
+  "op": "count",
+  "entity": "room",
+  "by": "label"
+ },
+ "Combien de portes (portes intérieures et portes d'entrée confondues) sont dessinées sur ce plan ?": {
+  "op": "count",
+  "entity": "door"
+ },
+ "Combien de fenêtres sont dessinées sur ce plan ?": {
+  "op": "count",
+  "entity": "window"
+ },
+ "Combien de WC sont dessinés sur ce plan ?": {
+  "op": "count",
+  "entity": "toilet"
+ },
+ "Combien de lavabos sont dessinés sur ce plan ?": {
+  "op": "count",
+  "entity": "washbasin"
+ },
+ "Combien de baignoires sont dessinées sur ce plan ?": {
+  "op": "count",
+  "entity": "bathtub"
+ },
+ "Combien de douches sont dessinées sur ce plan ?": {
+  "op": "count",
+  "entity": "shower"
+ },
+ "Quelle est la surface nette de la pièce <R> (<Q>) en m² ?": {
+  "op": "area",
+  "entity": "room",
+  "by": "number"
+ },
+ "Quelle est la surface nette de l'appartement <L> en m² (somme de toutes ses pièces, hors balcons, loggias, terrasses et autres espaces extérieurs) ?": {
+  "op": "area",
+  "entity": "room",
+  "by": "apartment"
+ },
+ "Quelle est la surface nette totale en m² de toutes les pièces désignées <Q> à cet étage ?": {
+  "op": "area",
+  "entity": "room",
+  "by": "label"
+ },
+ "Quelle est la surface nette totale en m² de toutes les pièces intérieures numérotées de cet étage (hors balcons, loggias, terrasses et autres espaces extérieurs, gaines et vides) ?": {
+  "op": "area",
+  "entity": "room",
+  "by": "floor"
+ },
+ "Quante docce sono disegnate in questa pianta?": {
+  "op": "count",
+  "entity": "shower"
+ },
+ "How many doors are there in the model <Q>?": {
+  "op": "count",
+  "entity": "door",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many windows are there in the model <Q>?": {
+  "op": "count",
+  "entity": "window",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many rooms (spaces) are there in the model <Q>?": {
+  "op": "count",
+  "entity": "space",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many walls are there in the model <Q>?": {
+  "op": "count",
+  "entity": "wall",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many beams are there in the model <Q>?": {
+  "op": "count",
+  "entity": "beam",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many stairs are there in the model <Q>?": {
+  "op": "count",
+  "entity": "stair",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many doors are shown on the floor plan of <Q>?": {
+  "op": "count",
+  "entity": "door",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "How many windows are shown on the floor plan of <Q>?": {
+  "op": "count",
+  "entity": "window",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "How many rooms (spaces) are shown on the floor plan of <Q>?": {
+  "op": "count",
+  "entity": "space",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "How many stairs are shown on the floor plan of <Q>?": {
+  "op": "count",
+  "entity": "stair",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "What is the net floor area of the room <Q> on <Q>, in m²?": {
+  "op": "area",
+  "entity": "space",
+  "by": "room",
+  "domain": "ifc"
+ },
+ "What is the total net floor area of all rooms (spaces) on <Q>, in m²?": {
+  "op": "area",
+  "entity": "space",
+  "by": "storey",
+  "domain": "ifc"
+ },
+ "How many sanitary fixtures are there in the model <Q>?": {
+  "op": "count",
+  "entity": "sanitary",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many light fixtures are there in the model <Q>?": {
+  "op": "count",
+  "entity": "light",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many columns are there in the model <Q>?": {
+  "op": "count",
+  "entity": "column",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "How many columns are shown on the floor plan of <Q>?": {
+  "op": "count",
+  "entity": "column",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "How many walls are shown on the floor plan of <Q>?": {
+  "op": "count",
+  "entity": "wall",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "What is the total net volume of all slabs on <Q>, in m³?": {
+  "op": "sum",
+  "entity": "slab",
+  "measure": "net_volume",
+  "domain": "ifc"
+ },
+ "What is the total length of all walls on <Q>, in metres?": {
+  "op": "sum",
+  "entity": "wall",
+  "measure": "length",
+  "domain": "ifc"
+ },
+ "What is the total net side area of all walls on <Q>, in m²?": {
+  "op": "sum",
+  "entity": "wall",
+  "measure": "net_side_area",
+  "domain": "ifc"
+ },
+ "What is the total net volume of all walls on <Q>, in m³?": {
+  "op": "sum",
+  "entity": "wall",
+  "measure": "net_volume",
+  "domain": "ifc"
+ },
+ "Mitu ust on mudelis <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu akent on mudelis <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu ruumi on mudelis <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu seina on mudelis <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu posti on mudelis <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu tala on mudelis <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu treppi on mudelis <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Mitu ust on näidatud korruse <Q> plaanil?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Mitu ruumi on näidatud korruse <Q> plaanil?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Mitu posti on näidatud korruse <Q> plaanil?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Mitu treppi on näidatud korruse <Q> plaanil?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Kui suur on ruumi <Q> netopõrandapind korrusel <Q> (m²)?": {
+  "by": "room",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Kui suur on kõigi ruumide netopõrandapind kokku korrusel <Q> (m²)?": {
+  "by": "storey",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Mitu seina on näidatud korruse <Q> plaanil?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hvor mange døre er der i modellen <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange vinduer er der i modellen <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange rum er der i modellen <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange vægge er der i modellen <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange søjler er der i modellen <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange bjælker er der i modellen <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange trapper er der i modellen <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hvor mange døre er vist på plantegningen for <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hvor mange rum er vist på plantegningen for <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hvor mange vægge er vist på plantegningen for <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hvor mange søjler er vist på plantegningen for <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hvad er nettoarealet af rummet <Q> på <Q> i m²?": {
+  "by": "room",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Hvad er det samlede nettoareal af alle rum på <Q> i m²?": {
+  "by": "storey",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Hvad er det samlede nettovolumen af alle dæk og plader på <Q> i m³?": {
+  "entity": "slab",
+  "measure": "net_volume",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Hvad er den samlede længde af alle vægge på <Q> i meter?": {
+  "entity": "wall",
+  "measure": "length",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Hvad er det samlede nettosideareal af alle vægge på <Q> i m²?": {
+  "entity": "wall",
+  "measure": "net_side_area",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Hvad er det samlede nettovolumen af alle vægge på <Q> i m³?": {
+  "entity": "wall",
+  "measure": "net_volume",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Hvor mange vinduer er vist på plantegningen for <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hvor mange trapper er vist på plantegningen for <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hoeveel deuren bevat het model <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel ramen bevat het model <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel ruimtes bevat het model <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel wanden bevat het model <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel kolommen bevat het model <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel balken bevat het model <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel sanitaire toestellen bevat het model <Q>?": {
+  "entity": "sanitary",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Hoeveel deuren staan er op de plattegrond van <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hoeveel ruimtes staan er op de plattegrond van <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hoeveel kolommen staan er op de plattegrond van <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wat is de netto vloeroppervlakte van de ruimte <Q> op <Q>, in m²?": {
+  "by": "room",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Wat is de totale netto vloeroppervlakte van alle ruimtes op <Q>, in m²?": {
+  "by": "storey",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Wat is de totale lengte van alle wanden op <Q>, in meter?": {
+  "entity": "wall",
+  "measure": "length",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wat is de totale netto zijoppervlakte van alle wanden op <Q>, in m²?": {
+  "entity": "wall",
+  "measure": "net_side_area",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wat is het totale netto volume van alle wanden op <Q>, in m³?": {
+  "entity": "wall",
+  "measure": "net_volume",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wat is het totale netto volume van alle vloeren op <Q>, in m³?": {
+  "entity": "slab",
+  "measure": "net_volume",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Hoeveel wanden staan er op de plattegrond van <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie viele Türen enthält das Modell <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Fenster enthält das Modell <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Räume enthält das Modell <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Wände enthält das Modell <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Träger enthält das Modell <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Treppen enthält das Modell <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Türen sind im Grundriss <Q> dargestellt?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie viele Fenster sind im Grundriss <Q> dargestellt?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie viele Räume sind im Grundriss <Q> dargestellt?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie viele Wände sind im Grundriss <Q> dargestellt?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie viele Treppen sind im Grundriss <Q> dargestellt?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie groß ist die Netto-Grundfläche des Raums <Q> im Geschoss <Q> in m²?": {
+  "by": "room",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Wie lang sind alle Wände im Geschoss <Q> zusammen, in Metern?": {
+  "entity": "wall",
+  "measure": "length",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wie groß ist die gesamte Netto-Seitenfläche aller Wände im Geschoss <Q> in m²?": {
+  "entity": "wall",
+  "measure": "net_side_area",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wie groß ist das gesamte Netto-Volumen aller Wände im Geschoss <Q> in m³?": {
+  "entity": "wall",
+  "measure": "net_volume",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wie groß ist das gesamte Netto-Volumen aller Decken und Bodenplatten im Geschoss <Q> in m³?": {
+  "entity": "slab",
+  "measure": "net_volume",
+  "op": "sum",
+  "domain": "ifc"
+ },
+ "Wie viele Stützen enthält das Modell <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Wie viele Stützen sind im Grundriss <Q> dargestellt?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Wie groß ist die gesamte Netto-Grundfläche aller Räume im Geschoss <Q> in m²?": {
+  "by": "storey",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Wie viele Sanitärobjekte enthält das Modell <Q>?": {
+  "entity": "sanitary",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Qual è il numero di porte nel modello <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Qual è il numero di finestre nel modello <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Qual è il numero di muri nel modello <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Qual è il numero di muri nella pianta del piano <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de puertas en el modelo <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de ventanas en el modelo <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de locales en el modelo <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de muros en el modelo <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de pilares en el modelo <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de vigas en el modelo <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de escaleras en el modelo <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de puertas en el plano de la planta <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de locales en el plano de la planta <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "¿Cuál es la superficie útil del local <Q> en la planta <Q>, en m²?": {
+  "by": "room",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "¿Cuál es la superficie útil total de todos los locales de la planta <Q>, en m²?": {
+  "by": "storey",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "¿Cuál es el número de escaleras en el plano de la planta <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Hoeveel ramen staan er op de plattegrond van <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Care este numărul de ferestre din modelul <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Care este numărul de pereți din modelul <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Care este numărul de stâlpi din modelul <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Care este numărul de grinzi din modelul <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Care este numărul de scări din modelul <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Care este numărul de corpuri de iluminat din modelul <Q>?": {
+  "entity": "light",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Care este numărul de scări de pe planul nivelului <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Care este numărul de stâlpi de pe planul nivelului <Q>?": {
+  "entity": "column",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Ile drzwi znajduje się w modelu <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Ile okien znajduje się w modelu <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Ile pomieszczeń znajduje się w modelu <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Ile ścian znajduje się w modelu <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Ile belek znajduje się w modelu <Q>?": {
+  "entity": "beam",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Ile schodów znajduje się w modelu <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "model",
+  "domain": "ifc"
+ },
+ "Ile drzwi pokazano na rzucie kondygnacji <Q>?": {
+  "entity": "door",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Ile pomieszczeń pokazano na rzucie kondygnacji <Q>?": {
+  "entity": "space",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Ile ścian pokazano na rzucie kondygnacji <Q>?": {
+  "entity": "wall",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Ile schodów pokazano na rzucie kondygnacji <Q>?": {
+  "entity": "stair",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ },
+ "Jaka jest powierzchnia netto pomieszczenia <Q> na kondygnacji <Q> (w m²)?": {
+  "by": "room",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Jaka jest łączna powierzchnia netto wszystkich pomieszczeń na kondygnacji <Q> (w m²)?": {
+  "by": "storey",
+  "entity": "space",
+  "op": "area",
+  "domain": "ifc"
+ },
+ "Ile okien pokazano na rzucie kondygnacji <Q>?": {
+  "entity": "window",
+  "op": "count",
+  "scope": "storey",
+  "domain": "ifc"
+ }
+}

@@ -1,0 +1,12 @@
+# Python 3.10+
+pymupdf>=1.24
+pillow>=10
+numpy>=1.26
+opencv-python-headless>=4.9
+shapely>=2.0
+scipy>=1.11
+ifcopenshell>=0.8
+# only for retraining the floor-plan detector (src/cubi_yolo.py); AGPL-3.0
+# ultralytics==8.3.200
+# only for the older segmentation reader and the learned combiner experiments
+# torch, scikit-learn

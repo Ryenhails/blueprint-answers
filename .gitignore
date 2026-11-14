@@ -1,0 +1,23 @@
+# credentials: never commit
+api.txt
+*.key
+.env
+# the challenge dataset and anything derived from its drawings
+data/junction-dataset/
+data/junction-dataset-preview/
+data/zips/
+data/raster_*.json*
+data/facts_ifc*.json
+data/facts_ifc_elements.zip
+data/answer_cache*.json
+data/scan_eval.jsonl
+data/ifc_bench_eval.jsonl
+data/val_run.log
+extrainfo/
+# local libraries, caches, exports
+pylibs/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+demo_offline.html
+overview.html

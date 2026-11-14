@@ -1,0 +1,469 @@
+<title>Blueprint Answers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* A drafting desk: sheet index on the left, the drawing in the middle, the answer slip on the right.
+   One colour per processing route, used everywhere a route is named. */
+:root {
+  --bg: #eef1f4; --panel: #ffffff; --ink: #14202e; --muted: #5b6878; --line: #cfd6de; --soft: #f5f7f9;
+  --accent: #1463c8; --accent-soft: #dbe8fa; --mark: #d9480f; --meas: #0b7a53; --ok: #1d7a45; --ok-s: #dff3e7; --bad: #b3261e; --bad-s: #fbe3e0; --warn: #8a5a00; --warn-s: #fbeed6; --sheet: #ffffff;
+  --vec:#1d62b8; --vec-s:#dfeafa; --bim:#1f7a4d; --bim-s:#dcf1e6; --tab:#a85d00; --tab-s:#fbeed6; --img:#7a3fb0; --img-s:#efe4fa; --vis:#b3372f; --vis-s:#fbe3e0;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f151c; --panel: #17202a; --ink: #e6ecf2; --muted: #93a1b1; --line: #2b3745; --soft: #1c2631;
+  --accent: #6aa9ff; --accent-soft: #1c3355; --mark: #ff8a47; --meas: #4fd1a1; --ok: #58c98a; --ok-s: #143626; --bad: #ff8078; --bad-s: #45201d; --warn: #f0b055; --warn-s: #3a2c14; --sheet: #f4f6f8;
+  --vec:#7fb2f2; --vec-s:#17304f; --bim:#5ec795; --bim-s:#143626; --tab:#f0b055; --tab-s:#3a2c14; --img:#c59af0; --img-s:#33234a; --vis:#f08a80; --vis-s:#45201d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f151c; --panel: #17202a; --ink: #e6ecf2; --muted: #93a1b1; --line: #2b3745; --soft: #1c2631;
+  --accent: #6aa9ff; --accent-soft: #1c3355; --mark: #ff8a47; --meas: #4fd1a1; --ok: #58c98a; --ok-s: #143626; --bad: #ff8078; --bad-s: #45201d; --warn: #f0b055; --warn-s: #3a2c14; --sheet: #f4f6f8;
+  --vec:#7fb2f2; --vec-s:#17304f; --bim:#5ec795; --bim-s:#143626; --tab:#f0b055; --tab-s:#3a2c14; --img:#c59af0; --img-s:#33234a; --vis:#f08a80; --vis-s:#45201d; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.45;
+  padding-block: 12px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 12px }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; flex: 1; min-width: 0 }
+h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.01em }
+.brand p { margin: 0; color: var(--muted) }
+nav { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel) }
+nav a { padding: 6px 14px; color: var(--muted); text-decoration: none; font-weight: 500; border-right: 1px solid var(--line) }
+nav a:last-child { border-right: 0 }
+nav a[aria-current="page"] { background: var(--ink); color: var(--panel) }
+nav a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.desk { display: grid; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr) minmax(300px, 380px); gap: 12px; align-items: start }
+@media (max-width: 1100px) { .desk { grid-template-columns: minmax(0, 1fr) } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-width: 0 }
+h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px }
+.sheets { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; max-height: 38vh; overflow: auto }
+.sheets button, .qs button { all: unset; cursor: pointer; display: block; padding: 5px 8px; border-radius: 4px; border: 1px solid transparent; overflow-wrap: anywhere }
+.sheets button:hover, .qs button:hover { background: var(--accent-soft) }
+.sheets button[aria-pressed="true"], .qs button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft) }
+.tag { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-left: 6px }
+.rt { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 1px 8px 1px 6px; border: 1px solid; white-space: nowrap }
+.rt::before { content: ""; width: 8px; height: 8px; background: currentColor }
+.rt.swiss { color: var(--vec); background: var(--vec-s) } .rt.ifc { color: var(--bim); background: var(--bim-s) } .rt.table { color: var(--tab); background: var(--tab-s) }
+.rt.raster { color: var(--img); background: var(--img-s) } .rt.vision, .rt.unknown { color: var(--vis); background: var(--vis-s) }
+.grp { display: flex; align-items: center; gap: 8px; margin: 10px 0 3px; font-size: 11.5px; color: var(--muted) }
+.grp:first-child { margin-top: 0 }
+.qgrp { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 0 2px }
+.qgrp:first-child { margin-top: 0 }
+.qs { display: flex; flex-direction: column; gap: 1px; max-height: 40vh; overflow: auto }
+.qs button { font-size: 13px }
+.upload { border: 1px dashed var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px }
+.upload input { font: inherit; max-width: 100%; color: var(--ink) }
+.upload small, .empty { color: var(--muted) }
+.ask { display: flex; gap: 6px; margin-bottom: 10px }
+.ask input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink) }
+.ask button { font: inherit; cursor: pointer; padding: 6px 18px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--panel); font-weight: 600 }
+.tools { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap }
+.tools button { font: inherit; cursor: pointer; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 2px 10px }
+.tools .sp { flex: 1 }
+.chip { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel) }
+.chip i { width: 10px; height: 10px; border-radius: 2px; background: var(--c); display: inline-block }
+.chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through }
+.chip b { font-family: var(--mono); font-weight: 500 }
+.viewer { position: relative; background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; touch-action: none; cursor: grab }
+.viewer svg { display: block; width: 100%; height: min(70vh, 780px) }
+.viewer .nodraw { padding: 28px 18px; color: #4a5766 }
+.busy { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.72); color: #14202e; font-weight: 500; gap: 10px }
+.busy::before { content: ""; width: 16px; height: 16px; border: 2px solid #1463c8; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite }
+@keyframes spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) { .busy::before { animation: none } }
+/* evidence on the sheet; colours fixed because the sheet itself stays white in both themes */
+.ev { fill: #1463c8; fill-opacity: 0.20; stroke: #1463c8; stroke-width: 1.4; vector-effect: non-scaling-stroke }
+.ev.sym { fill: #d9480f; fill-opacity: 0.10; stroke: #d9480f; stroke-width: 1.8 }
+.ev.meas { fill: #0b7a53; fill-opacity: 0.24; stroke: #0b7a53; stroke-width: 2 }
+.ev.line { fill: none; stroke: #0b7a53; stroke-width: 3.5 }
+.ev.hot { fill-opacity: 0.6; stroke-width: 3.5 }
+.evlabel { font-family: "IBM Plex Mono", monospace; font-weight: 500; fill: #06402c; paint-order: stroke; stroke: #ffffff; stroke-width: 0.22em; pointer-events: none; text-anchor: middle }
+.viewer .hit, .viewer .hit path { fill: #1463c8 !important; fill-opacity: 0.35; stroke: #1463c8 !important }
+.viewer .hit.hot, .viewer .hit.hot path { fill-opacity: 0.8 }
+.answer { font-family: var(--mono); font-size: 30px; font-weight: 500; line-height: 1.15; overflow-wrap: anywhere; white-space: pre-wrap }
+.answer.long { font-size: 14px; line-height: 1.5; font-family: var(--sans); max-height: 30vh; overflow: auto; font-weight: 400 }
+.answer small { font-size: 14px; color: var(--muted); font-weight: 400 }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px }
+.badge { font-size: 12px; padding: 2px 9px; border-radius: 4px; border: 1px solid transparent }
+.badge.ok { color: var(--ok); background: var(--ok-s) } .badge.bad { color: var(--bad); background: var(--bad-s) }
+.badge.na { color: var(--muted); border-color: var(--line) } .badge.warn { color: var(--warn); background: var(--warn-s) }
+.block { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px }
+/* the path an answer took down the ladder */
+.steps { list-style: none; margin: 0; padding: 0 }
+.steps li { position: relative; padding: 0 0 10px 26px }
+.steps li::before { content: ""; position: absolute; left: 6px; top: 4px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--muted); background: var(--panel) }
+.steps li::after { content: ""; position: absolute; left: 11px; top: 19px; bottom: -2px; width: 2px; background: var(--line) }
+.steps li:last-child { padding-bottom: 0 } .steps li:last-child::after { display: none }
+.steps li.done::before { border-color: var(--accent); background: var(--accent) }
+.steps li.skip { color: var(--muted) } .steps li.skip::before { border-style: dotted }
+.steps .t { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 13px }
+.steps .t span:last-child { font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--muted); white-space: nowrap }
+.steps .d { font-size: 12.5px; color: var(--muted) }
+.steps li.done .d { color: var(--ink) }
+.calc { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 13.5px }
+pre { font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 8px; max-height: 34vh; overflow: auto }
+details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; margin-top: 6px }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.tile { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px }
+.tile b { display: block; font-family: var(--mono); font-weight: 500; font-size: 16px; font-variant-numeric: tabular-nums }
+.tile span { font-size: 11px; color: var(--muted) }
+.evlist { list-style: none; margin: 6px 0 0; padding: 0; max-height: 24vh; overflow: auto; font-size: 12.5px }
+.evlist li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; border-radius: 3px; cursor: pointer }
+.evlist li:hover { background: var(--accent-soft) }
+.evlist b { font-family: var(--mono); font-weight: 400; font-variant-numeric: tabular-nums }
+/* How it works + validation */
+.doc { max-width: 1180px; margin: 0 auto }
+.doc h3 { font-size: 17px; margin: 22px 0 4px; font-weight: 600 }
+.doc > p, .doc .lead { color: var(--muted); margin: 0 0 12px; max-width: 78ch }
+.flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px }
+@media (max-width: 900px) { .flow, .ladder, .ideas { grid-template-columns: minmax(0, 1fr) !important } }
+.card { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--c, var(--line)); border-radius: 6px; padding: 10px 12px; min-width: 0 }
+.card h4 { margin: 0 0 4px; font-size: 14px }
+.card p { margin: 0 0 6px; font-size: 12.5px; color: var(--muted) }
+.card .to { font-family: var(--mono); font-size: 11.5px; border-top: 1px dashed var(--line); padding-top: 6px; color: var(--ink) }
+.ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; counter-reset: lv -1 }
+.rung { background: var(--panel); border: 1px solid var(--line); border-right-width: 0; padding: 10px 12px; position: relative; min-width: 0 }
+.rung:last-child { border-right-width: 1px; border-radius: 0 6px 6px 0 } .rung:first-child { border-radius: 6px 0 0 6px }
+.rung h4 { margin: 0 0 4px; font-size: 14px } .rung h4::before { counter-increment: lv; content: counter(lv); font-family: var(--mono); background: var(--ink); color: var(--panel); padding: 0 6px; margin-right: 8px; border-radius: 3px }
+.rung p { margin: 0 0 6px; font-size: 12.5px; color: var(--muted) }
+.rung .cost { font-family: var(--mono); font-size: 12px }
+.ideas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+.stat { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 10px 0 4px }
+.stat .tile b { font-size: 26px }
+table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--panel) }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600 }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap }
+.bar { display: flex; height: 12px; min-width: 120px; background: var(--soft); border: 1px solid var(--line); border-radius: 2px; overflow: hidden }
+.bar i { display: block; height: 100% } .bar .g { background: var(--ok) } .bar .p { background: var(--warn) } .bar .w { background: var(--bad); opacity: .55 }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px }
+.note { font-size: 12.5px; color: var(--muted); max-width: 90ch }
+</style>
+
+<div class="top">
+  <div class="brand"><h1>Blueprint Answers</h1><p>Ask a construction drawing a question. Models decide and point; code counts, sums and measures, and every number points back to the sheet.</p></div>
+  <nav aria-label="Views"><a href="#ask" data-v="ask">Ask</a><a href="#how" data-v="how">How it works</a><a href="#validation" data-v="validation">Validation</a></nav>
+</div>
+
+<main id="v-ask">
+<div class="desk">
+  <section class="panel" aria-label="Drawings and questions">
+    <h2>Drawings, by how they are read</h2>
+    <div class="sheets" id="sheets"></div>
+    <div class="upload" id="uploadbox"><label for="upfile"><b>Your own drawing</b></label><input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc"><small id="upmsg">PDF (any number of sheets), a scan or image, or an IFC model.</small></div>
+    <h2>Example questions</h2>
+    <div class="qs" id="qs"></div>
+  </section>
+
+  <section class="panel" aria-label="Drawing viewer">
+    <form class="ask" id="askform">
+      <input id="question" type="text" autocomplete="off" aria-label="Question" placeholder="Ask anything about this drawing, in any language">
+      <button type="submit" id="askbtn">Ask</button>
+    </form>
+    <div class="tools">
+      <button type="button" id="zin" aria-label="Zoom in">+</button>
+      <button type="button" id="zout" aria-label="Zoom out">−</button>
+      <button type="button" id="zfit">Fit</button>
+      <span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="sp"></span>
+      <small class="empty" id="hint">Scroll to zoom, drag to move.</small>
+    </div>
+    <div class="viewer" id="viewer"></div>
+  </section>
+
+  <section class="panel" aria-label="Answer" aria-live="polite">
+    <h2>Answer</h2>
+    <div id="out"><p class="empty">Pick a question on the left, or type your own.</p></div>
+  </section>
+</div>
+</main>
+
+<main id="v-how" class="doc" hidden>
+  <h3>1 · Every drawing is read once, into facts</h3>
+  <p class="lead">The route is chosen from what the file is, never from where it came from. Each route ends in a table of facts that carry their place on the sheet, so later answers can point at them.</p>
+  <div class="flow">
+    <div class="card" style="--c:var(--vec)"><h4>Vector plan PDF</h4><p>Code reads the PDF's own lines and text: room outlines, door arcs, window bands, fixtures, the scale.</p><div class="to">rooms · doors · windows · fixtures, exact geometry</div></div>
+    <div class="card" style="--c:var(--bim)"><h4>BIM model (IFC)</h4><p>Code lists every element with its storey, type, materials, layers, quantities and properties.</p><div class="to">one row per element</div></div>
+    <div class="card" style="--c:var(--tab)"><h4>Schedule sheet</h4><p>Door, window and finish schedules are lifted from the text layer with their cell positions.</p><div class="to">tables with named columns</div></div>
+    <div class="card" style="--c:var(--img)"><h4>Floor-plan image</h4><p>Three independent readers count objects: a trained detector, a segmentation network and a vision model. The middle count wins.</p><div class="to">counts with boxes + agreement flag</div></div>
+    <div class="card" style="--c:var(--vis)"><h4>Scanned sheet, anything else</h4><p>Nothing is assumed. The sheet is read per question, with code doing the measuring and the counting.</p><div class="to">scale · measured regions · counted boxes</div></div>
+  </div>
+
+  <h3>2 · A question climbs only as far as it has to</h3>
+  <p class="lead">The cheapest step that can answer wins. A stronger step runs only when the one before it has no answer, and the answer slip shows which steps ran and what each cost.</p>
+  <div class="ladder">
+    <div class="rung"><h4>Known question form</h4><p>177 question forms in a dozen languages map straight to a query. Code computes the answer.</p><div class="cost">$0 · no model call</div></div>
+    <div class="rung"><h4>Decision model</h4><p>A small model turns a new phrasing into a query, or says it is complex, or that the facts cannot hold it.</p><div class="cost">≈ $0.0004</div></div>
+    <div class="rung"><h4>Model writes code on the facts</h4><p>For comparisons, conditions and lists the model writes a few lines of Python over the fact tables. The code runs in a sandbox and names its evidence.</p><div class="cost">≈ $0.01 – 0.06</div></div>
+    <div class="rung"><h4>Model reads the sheet</h4><p>The model sees the image and the facts. It may ask code to measure a room or to count a symbol piece by piece, then answers with the arithmetic shown.</p><div class="cost">≈ $0.01 – 0.20</div></div>
+  </div>
+
+  <h3>3 · The model never does what code does better</h3>
+  <div class="ideas">
+    <div class="card" style="--c:var(--meas)"><h4>The model points, code measures</h4><p>On a scan the model only says where: a spot inside a room, the corners of a zone. Code turns the printed scale and the sheet size into millimetres per pixel, checks it against the scale bar, fills the room out to its walls and returns net area and perimeter.</p></div>
+    <div class="card" style="--c:var(--mark)"><h4>Counting piece by piece</h4><p>A whole sheet shrunk to one image hides door swings. The sheet is cut into overlapping tiles, the model boxes the symbol in each, and code merges the boxes. Every counted object is drawn on the sheet.</p></div>
+    <div class="card" style="--c:var(--accent)"><h4>Reliability comes for free</h4><p>Answers say how they were produced: computed from geometry, computed from facts read off an image, or read by a model. Where two independent readings exist, agreement between them is shown with the answer.</p></div>
+  </div>
+</main>
+
+<main id="v-validation" class="doc" hidden><div id="val"><p class="empty">Loading the validation results…</p></div></main>
+
+<script>
+const STATIC = /*__STATIC__*/null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ROUTE = { swiss: "Vector plan", ifc: "BIM model", table: "Sheet PDF", raster: "Image or scan", unknown: "Other" };
+const ROUTE_HOW = { swiss: "code reads the PDF's lines", ifc: "code queries the model", table: "tables extracted; model reads the rest", raster: "detectors and vision model", unknown: "read per question" };
+const QTYPE = { count: "Count", area: "Area", length: "Length", volume: "Volume", text: "Text lookup", other: "Other" };
+const STEPS = ["Known question form", "Decision model", "Model writes code on the facts", "Model reads the sheet"];
+const OLD_LEVEL = { cache: 0, keyword: 0, ingested: 0, llm: 1, code: 2, vision: 3 };
+let examples = [], cur = null, view = null, home = null, svgEl = null, hidden = new Set(), lastRes = null;
+
+const api = {
+  examples: async () => STATIC ? STATIC.examples : (await fetch("/api/examples")).json(),
+  drawing: async p => STATIC ? STATIC.drawings[p] : (await fetch("/api/drawing?path=" + encodeURIComponent(p))).json(),
+  validation: async () => STATIC ? STATIC.validation : (await fetch("/api/validation")).json(),
+  ask: async (p, q) => {
+    if (STATIC) return STATIC.answers[p + "\n" + q] || { answer: null, note: "This published copy holds the listed questions only. Run the live demo (see the repository) to ask anything or upload a drawing." };
+    return (await fetch("/", { method: "POST", body: JSON.stringify({ path: p, question: q }) })).json();
+  },
+};
+
+function setView(v) { view = v; if (svgEl) svgEl.setAttribute("viewBox", v.join(" ")); }
+function zoom(f, cx, cy) {
+  const [x, y, w, h] = view; cx = cx ?? x + w / 2; cy = cy ?? y + h / 2;
+  setView([cx - (cx - x) * f, cy - (cy - y) * f, w * f, h * f]);
+}
+function zoomTo(b) {
+  if (!svgEl || !b) return;
+  const w = Math.max(b[2] - b[0], home[2] / 12) * 3, h = Math.max(b[3] - b[1], home[3] / 12) * 3;
+  setView([(b[0] + b[2]) / 2 - w / 2, (b[1] + b[3]) / 2 - h / 2, w, h]);
+}
+
+async function loadDrawing(ex) {
+  cur = ex; lastRes = null; $("chips").innerHTML = "";
+  $("sheets").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.path === ex.path));
+  $("qs").innerHTML = "";
+  const groups = {};
+  ex.questions.forEach(q => { const g = q.model ? "Free-form (not in the dataset)" : (QTYPE[q.type] || "Other") + " · dataset question with a reference answer"; (groups[g] = groups[g] || []).push(q); });
+  Object.entries(groups).forEach(([g, qs]) => {
+    const h = document.createElement("div"); h.className = "qgrp"; h.textContent = g; $("qs").appendChild(h);
+    qs.forEach(q => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = q.q; b.setAttribute("aria-pressed", "false");
+      b.onclick = () => { $("question").value = q.q; ask(q.q); };
+      $("qs").appendChild(b);
+    });
+  });
+  if (!ex.questions.length) $("qs").innerHTML = '<p class="empty">Type a question above the drawing.</p>';
+  const v = $("viewer");
+  v.innerHTML = '<div class="nodraw">Loading the drawing…</div>'; svgEl = null;
+  const d = await api.drawing(ex.path);
+  if (d && d.mode === "svg") {
+    v.innerHTML = d.svg.replace(/<\?xml[^>]*\?>/, "");
+    svgEl = v.querySelector("svg"); svgEl.removeAttribute("width"); svgEl.removeAttribute("height");
+    home = svgEl.getAttribute("viewBox").split(/[ ,]+/).map(Number);
+  } else if (d && d.mode === "image") {
+    const [x0, y0, x1, y1] = d.clip;
+    v.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><image href="${d.image}" x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}"/><g id="evg"></g></svg>`;
+    svgEl = v.querySelector("svg"); home = [x0, y0, x1 - x0, y1 - y0];
+  } else {
+    v.innerHTML = '<div class="nodraw"><b>No sheet to show for this file.</b><br>A building model is a database, not a drawing: answers are computed from its elements, and the elements an answer rests on are listed on the right.</div>'; return;
+  }
+  setView(home.slice());
+}
+
+const evGroup = e => e.kind === "measured" ? "Measured by code" : e.kind === "counted" ? "Counted: " + e.name : e.kind === "model box" ? "Pointed at by the model" : e.kind === "table_row" ? "Schedule rows" : (e.kind || "evidence").replace(/_/g, " ");
+const evClass = e => e.kind === "measured" ? (e.poly && e.poly.length === 2 ? "line" : "meas") : (e.kind === "room" || e.kind === "table_row" || e.kind === "space") ? "" : "sym";
+const evColor = c => c === "meas" || c === "line" ? "#0b7a53" : c === "sym" ? "#d9480f" : "#1463c8";
+
+function drawEvidence(res) {
+  $("chips").innerHTML = "";
+  if (!svgEl) return;
+  svgEl.querySelectorAll(".hit").forEach(e => e.classList.remove("hit", "hot"));
+  const g = svgEl.querySelector("#evg"); if (g) g.innerHTML = "";
+  const fs = home[2] / 85, groups = {};
+  (res.evidence || []).forEach((e, i) => {
+    const grp = evGroup(e); (groups[grp] = groups[grp] || { n: 0, c: evColor(evClass(e)) }).n++;
+    if (hidden.has(grp)) return;
+    if (e.guid) {
+      svgEl.querySelectorAll(`[data-guid="${CSS.escape(e.guid)}"]`).forEach(n => { n.classList.add("hit"); n.dataset.ev = i; });
+    } else if (g && (e.poly || e.bbox)) {
+      const cls = "ev " + evClass(e), pad = home[2] / 900;
+      let el = e.poly && e.poly.length === 2 ? `<line class="${cls}" data-ev="${i}" x1="${e.poly[0][0]}" y1="${e.poly[0][1]}" x2="${e.poly[1][0]}" y2="${e.poly[1][1]}"/>`
+        : e.poly ? `<polygon class="${cls}" data-ev="${i}" points="${e.poly.map(p => p.join(",")).join(" ")}"/>`
+        : `<rect class="${cls}" data-ev="${i}" x="${e.bbox[0] - pad}" y="${e.bbox[1] - pad}" width="${e.bbox[2] - e.bbox[0] + 2 * pad}" height="${e.bbox[3] - e.bbox[1] + 2 * pad}"/>`;
+      if (e.kind === "measured" && e.bbox) {
+        const val = String(e.name).split(": ").pop().split(",")[0];
+        el += `<text class="evlabel" font-size="${fs}" x="${(e.bbox[0] + e.bbox[2]) / 2}" y="${(e.bbox[1] + e.bbox[3]) / 2 + fs / 3}">${esc(val)}</text>`;
+      }
+      g.insertAdjacentHTML("beforeend", el);
+    }
+  });
+  $("chips").innerHTML = Object.entries(groups).map(([k, v]) => `<button type="button" class="chip" style="--c:${v.c}" aria-pressed="${!hidden.has(k)}" data-g="${esc(k)}"><i></i>${esc(k)} <b>${v.n}</b></button>`).join("");
+  $("chips").querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.g; hidden.has(k) ? hidden.delete(k) : hidden.add(k); drawEvidence(res); });
+}
+function hot(i, on) { if (svgEl) svgEl.querySelectorAll(`[data-ev="${i}"]`).forEach(n => n.classList.toggle("hot", on)); }
+
+function fmtAns(a) { return typeof a === "number" ? (Number.isInteger(a) ? String(a) : a.toFixed(2)) : esc(a); }
+const money = v => !v ? "$0" : v < 0.001 ? "$" + Number(v).toFixed(4) : "$" + Number(v).toFixed(3);
+
+function stepsOf(res) {
+  let tr = res.trace;
+  if (!tr || !tr.length) {  // answers computed before the trace existed
+    const lv = OLD_LEVEL[res.plan_source];
+    tr = lv === undefined ? [] : [{ level: lv, name: STEPS[lv], answered: res.answer != null, cost_usd: res.cost_usd || 0, detail: null }];
+  }
+  const ran = new Set(tr.map(t => t.level)), last = tr.length ? tr[tr.length - 1].level : -1;
+  const rows = [];
+  if (res.page) rows.push(`<li class="done"><div class="t"><span>Sheet picked</span><span></span></div><div class="d">page ${esc(res.page)} of the PDF is the one this question is about</div></li>`);
+  if (res.read_from) rows.push(`<li class="done"><div class="t"><span>Same drawing, readable format</span><span></span></div><div class="d">read from ${esc(res.read_from)}</div></li>`);
+  STEPS.forEach((name, lv) => {
+    const t = tr.filter(x => x.level === lv).pop();
+    if (t) rows.push(`<li class="${t.answered ? "done" : ""}"><div class="t"><span>${lv} · ${esc(name)}</span><span>${money(t.cost_usd)}</span></div><div class="d">${esc(t.answered ? (t.detail || "answered here") : (t.detail || "no answer here, passed on"))}</div></li>`);
+    else rows.push(`<li class="skip"><div class="t"><span>${lv} · ${esc(name)}</span><span></span></div><div class="d">${lv > last ? "not needed" : "skipped for this kind of drawing"}</div></li>`);
+  });
+  return `<ol class="steps">${rows.join("")}</ol>`;
+}
+
+function showResult(res, q) {
+  const out = $("out"); lastRes = res; hidden = new Set();
+  if (res.error) { out.innerHTML = `<p class="badge bad">The request failed: ${esc(res.error)}</p>`; return; }
+  const none = res.answer === null || res.answer === undefined;
+  let verdict = '<span class="badge na">no reference answer for this question</span>';
+  if (res.gold !== undefined && res.gold !== null) {
+    verdict = res.correct === true ? `<span class="badge ok">matches the dataset answer (${esc(res.gold)})</span>`
+      : res.correct === false ? `<span class="badge bad">differs from the dataset answer (${esc(res.gold)})</span>`
+      : `<span class="badge na">dataset answer: ${esc(String(res.gold).slice(0, 160))}</span>`;
+  }
+  const how = res.plan_source === "vision" ? ((res.plan || {}).op || "").includes("code measures") ? ["warn", "sizes and counts by code, places chosen by the model"] : ["warn", "read by the model, not computed"]
+    : res.reliability ? [/disagree|approximate|low/.test(res.reliability) ? "warn" : "ok", res.reliability === "low" ? "low reliability for this question kind" : res.reliability]
+    : ["ok", "computed by code from the drawing's data"];
+  const ev = res.evidence || [];
+  const parts = String(res.calc || res.note || "").split(/\n\n(?=Code written|The model wrote this code)|```python/);
+  const code = parts.length > 1 ? parts.slice(1).join("\n").replace(/```\s*$/, "") : "";
+  const long = !none && String(res.answer).length > 60;
+  const k = (res.kind || "unknown").replace("(precomputed)", "");
+  out.innerHTML = `
+    <div class="answer${long ? " long" : ""}">${none ? '<span class="empty" style="font-size:16px;font-family:var(--sans)">No answer.</span>' : fmtAns(res.answer)} <small>${esc(none || res.unit === "count" ? "" : res.unit || "")}</small></div>
+    <div class="badges">${none ? "" : verdict}${none ? "" : `<span class="badge ${how[0]}">${esc(how[1])}</span>`}</div>
+    <div class="block"><h2>Answer path · <span class="rt ${ROUTE[k] ? k : "unknown"}" style="text-transform:none;letter-spacing:0">${esc(ROUTE[k] || ROUTE.unknown)}</span></h2>${stepsOf(res)}</div>
+    <div class="block"><h2>Reasoning</h2><p class="calc">${esc(parts[0] || (none ? "This question could not be answered from the drawing." : ""))}</p>
+      ${code ? `<details><summary>Code the model wrote (run in a sandbox)</summary><pre>${esc(code.trim())}</pre></details>` : ""}
+      ${res.plan && res.plan_source !== "vision" && !code ? `<details><summary>Query</summary><pre>${esc(JSON.stringify({ plan: res.plan, slots: res.slots }, null, 1))}</pre></details>` : ""}</div>
+    <div class="block"><h2>Evidence on the drawing · ${ev.length}</h2>
+      <ul class="evlist">${ev.slice(0, 300).map((e, i) => `<li data-i="${i}"><span>${esc(e.name || e.kind)}</span><b>${e.value !== undefined && e.value !== null ? esc(e.value) : ""}</b></li>`).join("") || '<li class="empty" style="cursor:default">Nothing to point at for this answer.</li>'}</ul></div>
+    <div class="block"><h2>Cost of this answer</h2><div class="tiles">
+      <div class="tile"><b>${money(res.cost_usd)}</b><span>API cost</span></div>
+      <div class="tile"><b>${esc((res.llm_tokens ?? 0).toLocaleString("en"))}</b><span>model tokens</span></div>
+      <div class="tile"><b>${res.seconds !== undefined ? esc(Number(res.seconds).toFixed(1)) + " s" : "–"}</b><span>time${res.precomputed ? " (stored)" : ""}</span></div></div></div>`;
+  out.querySelectorAll(".evlist li[data-i]").forEach(li => {
+    li.onmouseenter = () => hot(li.dataset.i, true); li.onmouseleave = () => hot(li.dataset.i, false);
+    li.onclick = () => zoomTo(ev[li.dataset.i].bbox);
+  });
+  drawEvidence(res);
+}
+
+async function ask(q) {
+  if (!cur || !q.trim()) return;
+  $("qs").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.textContent === q));
+  $("out").innerHTML = '<p class="empty">Working…</p>';
+  const busy = document.createElement("div"); busy.className = "busy"; busy.textContent = "Answering…"; $("viewer").appendChild(busy);
+  try { showResult(await api.ask(cur.path, q), q); } catch (e) { showResult({ error: String(e) }, q); }
+  busy.remove();
+}
+
+$("askform").addEventListener("submit", e => { e.preventDefault(); ask($("question").value); });
+$("zin").onclick = () => zoom(0.7); $("zout").onclick = () => zoom(1.4); $("zfit").onclick = () => home && setView(home.slice());
+const vw = $("viewer"); let drag = null;
+vw.addEventListener("wheel", e => {
+  if (!svgEl) return; e.preventDefault();
+  const r = svgEl.getBoundingClientRect(), [x, y, w, h] = view;
+  const s = Math.max(w / r.width, h / r.height);
+  const cx = x + w / 2 + (e.clientX - r.left - r.width / 2) * s, cy = y + h / 2 + (e.clientY - r.top - r.height / 2) * s;
+  zoom(e.deltaY > 0 ? 1.18 : 0.85, cx, cy);
+}, { passive: false });
+vw.addEventListener("pointerdown", e => { if (svgEl) { drag = { x: e.clientX, y: e.clientY, v: view.slice() }; vw.setPointerCapture(e.pointerId); } });
+vw.addEventListener("pointermove", e => {
+  if (!drag) return; const r = svgEl.getBoundingClientRect(); const s = Math.max(drag.v[2] / r.width, drag.v[3] / r.height);
+  setView([drag.v[0] - (e.clientX - drag.x) * s, drag.v[1] - (e.clientY - drag.y) * s, drag.v[2], drag.v[3]]);
+});
+vw.addEventListener("pointerup", () => { drag = null; });
+
+function addSheet(ex) {
+  const k = ROUTE[ex.kind] ? ex.kind : "unknown";
+  let grp = $("sheets").querySelector(`[data-grp="${k}"]`);
+  if (!grp) {
+    grp = document.createElement("div"); grp.dataset.grp = k;
+    grp.innerHTML = `<div class="grp"><span class="rt ${k}">${esc(ROUTE[k])}</span><span>${esc(ROUTE_HOW[k])}</span></div>`;
+    $("sheets").appendChild(grp);
+  }
+  const b = document.createElement("button");
+  b.type = "button"; b.dataset.path = ex.path; b.setAttribute("aria-pressed", "false");
+  b.innerHTML = esc(ex.title) + (ex.uploaded ? '<span class="tag">uploaded</span>' : "");
+  b.onclick = () => loadDrawing(ex).then(() => { $("out").innerHTML = '<p class="empty">Pick a question on the left, or type your own.</p>'; });
+  grp.appendChild(b);
+  return b;
+}
+if (STATIC) { $("upfile").disabled = true; $("upmsg").textContent = "Upload works in the live demo (see the repository); this published copy shows stored answers."; }
+$("upfile").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  $("upmsg").textContent = "Uploading…";
+  try {
+    const ex = await (await fetch("/api/upload", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name) }, body: f })).json();
+    if (ex.error) { $("upmsg").textContent = ex.error; return; }
+    $("upmsg").textContent = "Loaded. Type a question above the drawing.";
+    examples.push(ex); addSheet(ex).click(); $("question").focus();
+  } catch (err) { $("upmsg").textContent = "Upload failed: " + err; }
+});
+
+/* ---- validation view ---- */
+const pct = (a, b) => b ? (100 * a / b).toFixed(1) + "%" : "–";
+function resultCell(c) {
+  const t = c.text || {}, nt = (t.correct || 0) + (t.partial || 0) + (t.wrong || 0) + (t.ungraded || 0);
+  let h = "";
+  if (c.numeric) h += `<div class="bar" role="img" aria-label="${c.ok} of ${c.numeric} correct"><i class="g" style="width:${100 * c.ok / c.numeric}%"></i><i class="w" style="width:${100 - 100 * c.ok / c.numeric}%"></i></div>`;
+  if (nt) h += `<div class="bar" role="img" aria-label="text answers"><i class="g" style="width:${100 * (t.correct || 0) / nt}%"></i><i class="p" style="width:${100 * (t.partial || 0) / nt}%"></i><i class="w" style="width:${100 * (t.wrong || 0) / nt}%"></i></div>`;
+  return h;
+}
+function resultText(c) {
+  const t = c.text || {}, nt = (t.correct || 0) + (t.partial || 0) + (t.wrong || 0);
+  return [c.numeric ? `${c.ok} / ${c.numeric} (${pct(c.ok, c.numeric)})` : "", nt ? `${t.correct || 0} correct, ${t.partial || 0} partial, ${t.wrong || 0} wrong` : (t.ungraded ? "not graded yet" : "")].filter(Boolean).join(" · ");
+}
+const rowsOf = (cells, first) => `<div class="scroll"><table><thead><tr><th>${first}</th><th>Questions</th><th>Result</th><th></th><th>Cost per question</th></tr></thead><tbody>${cells.map(c => `<tr><td>${esc(c.label)}</td><td class="n">${c.n}</td><td class="n">${resultText(c)}</td><td>${resultCell(c)}</td><td class="n">${money(c.usd)}</td></tr>`).join("")}</tbody></table></div>`;
+async function showValidation() {
+  const v = await api.validation(), el = $("val");
+  if (!v) { el.innerHTML = '<p class="empty">No validation run is stored yet (python src/valset.py run).</p>'; return; }
+  const LANG = { en: "English", de: "German", fr: "French", it: "Italian", fi: "Finnish", nl: "Dutch", da: "Danish", es: "Spanish", et: "Estonian", other: "other" };
+  v.langs.forEach(c => c.label = LANG[c.label] || c.label);
+  el.innerHTML = `<h3>Validation on questions the system was not built on</h3>
+    <p class="lead">${v.total} questions with reference answers from the challenge dataset, drawn with a fixed seed. None of them is in the 500-question set used during development, the floor-plan images are from the official CubiCasa5K test split that the detector never saw, and the scans are drawings that were not used while the measuring step was tuned. ${v.answered < v.total ? `<b>${v.answered} of ${v.total} answered so far.</b>` : ""}</p>
+    <div class="stat">
+      <div class="tile"><b>${pct(v.all.ok, v.all.numeric)}</b><span>of ${v.all.numeric} unseen numeric questions correct (counts exact, sizes within 2%)</span></div>
+      <div class="tile"><b>${money(v.all.usd)}</b><span>average API cost per numeric question</span></div>
+      <div class="tile"><b>$${v.usd.toFixed(2)}</b><span>API cost of the whole run, ${v.answered} questions</span></div>
+    </div>
+    <h3>By kind of drawing</h3>${rowsOf(v.groups, "Drawing kind")}
+    <p class="note">Green = correct, amber = partly correct (text answers only), red = wrong or no answer. Open BIM questions have free-text reference answers; they were graded by a language model against the reference, without a human check. The 64 schedule-sheet questions are every question the dataset has for that source and the prompts were tuned on them, so they are listed apart and not counted in the headline number.</p>
+    <div class="cols"><div><h3>By question type</h3>${rowsOf(v.types, "Type")}</div><div><h3>By language of the question</h3>${rowsOf(v.langs, "Language")}</div></div>
+    <h3>Scanned sheets, by question form</h3>
+    <p class="lead">The dataset's vector plans also exist as PNG images. Asked on the PNG, nothing can be read from vector data: counts come from piece-by-piece reading and sizes from the measuring step. This is the hardest setting we can score.</p>${rowsOf(v.scans, "Question form")}`;
+}
+
+function route() {
+  const v = ["ask", "how", "validation"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "ask";
+  ["ask", "how", "validation"].forEach(n => { $("v-" + n).hidden = n !== v; });
+  document.querySelectorAll("nav a").forEach(a => a.dataset.v === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  if (v === "validation") showValidation();
+}
+window.addEventListener("hashchange", route); route();
+
+(async function start() {
+  examples = await api.examples();
+  examples.forEach(addSheet);
+  if (examples.length) {
+    await loadDrawing(examples[0]);
+    const q = examples[0].questions.find(x => /apartment [A-Z]|appartement [A-Z]/.test(x.q)) || examples[0].questions[0];
+    if (q) { $("question").value = q.q; ask(q.q); }
+  }
+})();
+</script>
