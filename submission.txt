@@ -1,0 +1,76 @@
+PROJECT NAME
+Blueprint Answers
+
+PUNCHLINE
+Ask any construction drawing a question. Models decide and point; code counts, sums and measures, and every answer shows its proof.
+
+TECHNOLOGIES
+Python, PyMuPDF, IfcOpenShell, OpenCV, Google Gemini API, YOLO11, Hugging Face Spaces
+
+DEMO LINK
+https://huggingface.co/spaces/Ryenhails/blueprint-answers
+
+SOURCE CODE (public)
+https://github.com/Ryenhails/blueprint-answers
+
+VIDEO
+https://www.youtube.com/watch?v=AjSBnnXv8GM
+
+PITCH DECK
+/scratch/work/liuz16/stoa_video/blueprint_answers_deck.pdf
+
+DESCRIPTION (markdown)
+## The problem
+
+Before anything gets built, someone counts the doors and measures the floors, by hand, from drawings. We first gave a frontier model (Opus 5.5) only the image and the question: **36 of 50** dataset questions correct. It understood every drawing. It miscounted and mismeasured.
+
+## The idea: a fact table
+
+So we split the job. **Models decide and point. Code counts, sums and measures.**
+
+Every drawing is read **once** into a fact table: each room, door, window, fixture, building element or schedule row becomes one row, with its size and its place on the sheet. The reader is chosen from what the file is:
+
+- **Vector plan PDF**: code parses the PDF's own lines. Exact.
+- **BIM model (IFC)**: code lists every element with storey, type, materials and quantities. Exact.
+- **Schedule sheet**: code lifts the tables from the text layer.
+- **Floor-plan image**: three independent readers count (a detector we trained, a segmentation network, a vision model); the middle count wins.
+- **Scanned sheet**: a model lists the rooms and points at each; code calibrates the scale against the scale bar and measures them.
+
+## Answering: the cheapest step that can
+
+1. **Known question form**: straight to a query, no model call, $0.
+2. **Small model** routes a new phrasing, in any language (about $0.0004).
+3. **Larger model writes code** on the fact table; the code runs in a sandbox (about 1 cent).
+4. **Model reads the sheet** only when the table falls short, and still asks code to measure and count.
+
+Every answer shows which steps ran, what each cost, the calculation, and the rooms and doors it used, highlighted on the drawing.
+
+## One example
+
+*"How much skirting board for the bedrooms and living room of apartment A, minus 0.9 m per door?"* A new question, so the router marks it complex. The model writes seven lines of code on the fact table: 71.92 m of wall minus 7 doors = **65.62 m**, with the four rooms and seven doors drawn on the plan. Cost: 2 cents.
+
+## Evaluation
+
+1,170 questions the system was never built on, sampled at random with a fixed seed across drawing kinds, question types and eight languages:
+
+| Drawing | Result |
+|---|---|
+| Vector plans | 299 / 300 |
+| BIM models | 150 / 150 |
+| Floor-plan images | 258 / 300 |
+| Scanned sheets | 145 / 220 |
+| **All numeric questions** | **852 / 970 (87.8%)** |
+| Open BIM questions (model-graded) | 98 right, 37 partly, of 200 |
+
+Average API cost: **1.6 cents per question**. Known question forms cost nothing; reading a scan in costs about 7 cents once.
+
+## What is still wrong
+
+Scans are the hardest. Door counts on scans come out 10–35% low, and areas that have to be measured on low-resolution scans are often outside the 2% tolerance. Answers from images and scans are marked as approximate. All of this is in the repository, per question.
+
+## Try it
+
+- Live demo, upload your own drawing: https://huggingface.co/spaces/Ryenhails/blueprint-answers
+- Stored examples: https://ryenhails.github.io/blueprint-answers/
+- Code and full results: https://github.com/Ryenhails/blueprint-answers
+- Video: https://www.youtube.com/watch?v=AjSBnnXv8GM

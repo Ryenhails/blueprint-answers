@@ -205,7 +205,7 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
       <label for="upfile"><b id="upnum"></b> Choose a file, or drop it here</label>
       <input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc">
       <small id="upmsg">PDF (any number of sheets), a scan or image, or an IFC model, up to 40 MB.</small></div>
-    <p class="note">The file is read once into a table of facts. That takes a few seconds for a PDF or a model and up to a minute for a large scan. It stays on this server only until the demo restarts. Live use is limited to 10 uploads and 40 questions per hour.</p>
+    <p class="note">The file is read once into a table of facts. That takes a few seconds for a PDF or a model and up to a minute for a large scan. It stays on this server only until the demo restarts.</p>
   </div>
   <div class="panel">
     <h3>Or use an example</h3>
@@ -219,6 +219,7 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
     <div class="tools">
       <b id="curtitle" style="font-size:13px"></b><span class="sp"></span>
       <span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+      <span id="pager" hidden style="display:inline-flex;gap:4px;align-items:center"><button type="button" id="pprev" aria-label="Previous sheet">‹</button><small id="plabel"></small><button type="button" id="pnext" aria-label="Next sheet">›</button><button type="button" id="pauto" title="Let the system pick the sheet a question is about">auto</button></span>
       <button type="button" id="zin" aria-label="Zoom in">+</button>
       <button type="button" id="zout" aria-label="Zoom out">−</button>
       <button type="button" id="zfit">Fit</button>
@@ -294,14 +295,14 @@ const live = !STATIC || LIVE;
 const headers = () => NEEDS_CODE ? { "X-Access-Code": $("code").value.trim() } : {};
 const api = {
   examples: async () => STATIC ? STATIC.examples : (await fetch("/api/examples")).json(),
-  drawing: async p => STATIC && STATIC.drawings[p] ? STATIC.drawings[p] : (await fetch("/api/drawing?path=" + encodeURIComponent(p))).json(),
+  drawing: async (p, page) => STATIC && STATIC.drawings[p] ? STATIC.drawings[p] : (await fetch("/api/drawing?path=" + encodeURIComponent(p) + "&page=" + (page || 1))).json(),
   validation: async () => STATIC ? STATIC.validation : (await fetch("/api/validation")).json(),
-  facts: async p => STATIC && STATIC.facts && STATIC.facts[p] ? STATIC.facts[p] : !live ? null : (await fetch("/api/facts?path=" + encodeURIComponent(p), { headers: headers() })).json(),
+  facts: async p => STATIC && STATIC.facts && STATIC.facts[p] ? STATIC.facts[p] : !live ? null : (await fetch("/api/facts?path=" + encodeURIComponent(p) + "&page=" + (curPage || 1), { headers: headers() })).json(),
   ask: async (p, q) => {
     if (STATIC && STATIC.answers[p + "\n" + q]) return STATIC.answers[p + "\n" + q];
     if (!live) return { answer: null, note: "This published copy holds the listed questions only. Open the live demo (see the repository) to ask anything or upload a drawing." };
     if (STATIC && STATIC.drawings[p]) return { answer: null, note: "The example drawings come with stored answers for the listed questions. Upload a drawing to ask free questions live." };
-    return (await fetch("/", { method: "POST", headers: headers(), body: JSON.stringify({ path: p, question: q }) })).json();
+    return (await fetch("/", { method: "POST", headers: headers(), body: JSON.stringify({ path: p, question: q, page: pageLocked ? curPage : null }) })).json();
   },
 };
 
@@ -338,9 +339,14 @@ async function loadDrawing(ex) {
     $("qs").appendChild(box);
   }
   renderHistory(); loadFacts(ex);
+  curPage = 1; nPages = 1; pageLocked = false;
+  await drawSheet(ex); showPager();
+}
+async function drawSheet(ex) {
   const v = $("viewer");
   v.innerHTML = '<div class="nodraw">Loading the drawing…</div>'; svgEl = null;
-  const d = await api.drawing(ex.path);
+  const d = await api.drawing(ex.path, curPage);
+  if (d && d.pages) nPages = d.pages;
   if (d && d.mode === "svg") {
     v.innerHTML = d.svg.replace(/<\?xml[^>]*\?>/, "");
     svgEl = v.querySelector("svg"); svgEl.removeAttribute("width"); svgEl.removeAttribute("height");
@@ -374,7 +380,18 @@ const GUIDE = [
   "<b>Step 3 of 4 · Ask a question</b>, in any language. Type your own or pick one from the list.",
   "<b>Step 4 of 4 · Check the answer.</b> It shows which steps produced it, what it rests on and what it cost. Point at an evidence line to see it on the drawing. Then ask another question, or choose another drawing.",
 ];
-let step = 1;
+let step = 1, curPage = 1, nPages = 1, pageLocked = false;  // sheets of a multi-page PDF
+function showPager() {
+  $("pager").hidden = nPages <= 1;
+  $("plabel").textContent = "sheet " + curPage + " of " + nPages + (pageLocked ? " (questions are asked on this sheet)" : " (auto: the system picks the sheet a question is about)");
+  $("pauto").hidden = !pageLocked;
+}
+async function showPage(n, lock) {
+  if (!cur || n < 1 || n > nPages) return;
+  curPage = n; pageLocked = lock;
+  await drawSheet(cur); showPager();
+  if (step === 2) loadFacts(cur);
+}
 function setStep(n) {
   step = n;
   $("s1").hidden = n !== 1; $("s23").hidden = n === 1;
@@ -422,6 +439,7 @@ function factMark(r) {
     : `<rect class="ev fact" x="${r.bbox[0] - pad}" y="${r.bbox[1] - pad}" width="${r.bbox[2] - r.bbox[0] + 2 * pad}" height="${r.bbox[3] - r.bbox[1] + 2 * pad}"/>`);
 }
 $("stepper").querySelectorAll("button").forEach(b => b.onclick = () => { if (!b.disabled) setStep(+b.dataset.s); });
+$("pprev").onclick = () => showPage(curPage - 1, true); $("pnext").onclick = () => showPage(curPage + 1, true); $("pauto").onclick = () => { pageLocked = false; showPager(); };
 $("tostep3").onclick = () => setStep(3); $("tostep2").onclick = () => setStep(2); $("tostep1").onclick = () => setStep(1);
 
 const evGroup = e => e.kind === "measured" ? "Measured by code" : e.kind === "counted" ? "Counted: " + e.name : e.kind === "model box" ? "Pointed at by the model" : e.kind === "table_row" ? "Schedule rows" : (e.kind || "evidence").replace(/_/g, " ");
@@ -522,7 +540,7 @@ async function ask(q) {
   $("qbox").open = false;
   const busy = document.createElement("div"); busy.className = "busy"; busy.textContent = "Answering…"; $("viewer").appendChild(busy);
   const at = cur;
-  try { const res = await api.ask(cur.path, q); (history[at.path] = history[at.path] || []).push({ q, res }); if (cur === at) { showResult(res, q); renderHistory(); setStep(4); } } catch (e) { showResult({ error: String(e) }, q); }
+  try { const res = await api.ask(cur.path, q); (history[at.path] = history[at.path] || []).push({ q, res }); if (cur === at) { if (res.page && res.page !== curPage && nPages > 1) { curPage = res.page; await drawSheet(cur); showPager(); } showResult(res, q); renderHistory(); setStep(4); } } catch (e) { showResult({ error: String(e) }, q); }
   busy.remove();
 }
 

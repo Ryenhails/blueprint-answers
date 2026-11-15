@@ -124,7 +124,7 @@ def _b64(data, mime):
     return "data:%s;base64,%s" % (mime, base64.b64encode(data).decode())
 
 
-def drawing(path, width=1700):
+def drawing(path, width=1700, page=1):
     """-> {"mode": "image", "clip": [x0,y0,x1,y1], "image": dataURL} or {"mode": "svg", "svg": text}.
     Evidence coordinates returned by ask() are in the same coordinate system as `clip`."""
     import fitz
@@ -140,7 +140,9 @@ def drawing(path, width=1700):
         if svg.endswith(".svg") and os.path.exists(svg):
             return {"mode": "svg", "svg": open(svg, encoding="utf-8").read()}
     if path.lower().endswith(".pdf"):
-        page = fitz.open(full)[0]
+        doc = fitz.open(full)
+        n_pages, page_no = len(doc), min(max(1, int(page)), len(doc))
+        page = doc[page_no - 1]
         clip = page.rect
         if kind == "swiss":
             words = page.get_text("words")
@@ -151,8 +153,8 @@ def drawing(path, width=1700):
         z = width / clip.width
         pix = page.get_pixmap(clip=clip, matrix=fitz.Matrix(z, z))
         if kind == "table":
-            return {"mode": "image", "clip": list(clip), "image": _b64(pix.tobytes("jpeg", jpg_quality=72), "image/jpeg")}
-        return {"mode": "image", "clip": list(clip), "image": _b64(pix.tobytes("png"), "image/png")}
+            return {"mode": "image", "clip": list(clip), "image": _b64(pix.tobytes("jpeg", jpg_quality=72), "image/jpeg"), "pages": n_pages, "page": page_no}
+        return {"mode": "image", "clip": list(clip), "image": _b64(pix.tobytes("png"), "image/png"), "pages": n_pages, "page": page_no}
     if path.lower().endswith(system.RASTER):
         import io
 
@@ -172,9 +174,9 @@ def drawing(path, width=1700):
     return {"mode": "none"}
 
 
-def ask(path, question):
+def ask(path, question, page=None):
     key = path + "\n" + question
-    res = system.ask(path, question, **BACKENDS)
+    res = system.ask(path, question, page=page, **BACKENDS)
     if res.get("answer") is None and key in answer_cache():
         res = dict(answer_cache()[key])
         res["precomputed"] = True
@@ -199,11 +201,13 @@ def ask(path, question):
     return json.loads(json.dumps(res, ensure_ascii=False, default=str))
 
 
-def facts(path):
+def facts(path, page=1):
     """What the system read from a drawing, as tables for the page: groups of rows, each row with its place on the sheet.
     Reads the drawing now if it has not been read yet (this is the one-time ingestion)."""
     full = _full(path)
     kind = system.kind_of(path)
+    if full.lower().endswith(".pdf") and int(page) > 1:
+        full = system.one_page(full, int(page))
     out = {"kind": kind, "summary": [], "groups": [], "note": "", "cost_usd": 0.0}
 
     def rows_of(items, cells, geo, limit=400):
@@ -337,13 +341,13 @@ class Handler(BaseHTTPRequestHandler):
                 elif limited(self, "ask"):
                     self._send(json.dumps({"error": "Too many requests from this address in the last hour. Try again later."}))
                 else:
-                    f = facts(p)
+                    f = facts(p, page=int(parse_qs(u.query).get("page", ["1"])[0]))
                     SPENT[0] += f.get("cost_usd") or 0
                     self._send(json.dumps(f, ensure_ascii=False))
             elif u.path == "/api/validation":
                 self._send(json.dumps(validation(), ensure_ascii=False))
             elif u.path == "/api/drawing":
-                self._send(json.dumps(drawing(parse_qs(u.query)["path"][0])))
+                self._send(json.dumps(drawing(parse_qs(u.query)["path"][0], page=int(parse_qs(u.query).get("page", ["1"])[0]))))
             else:
                 self._send("{}", code=404)
         except Exception as e:
@@ -370,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
             if HOSTED is not None and not (_updir and os.path.realpath(str(body["path"])).startswith(os.path.realpath(_updir) + os.sep)):
                 raise ValueError("live questions are answered for uploaded drawings")
-            res = ask(body["path"], body["question"])
+            res = ask(body["path"], body["question"], page=body.get("page"))
             SPENT[0] += res.get("cost_usd") or 0
             self._send(json.dumps(res, ensure_ascii=False))
         except Exception as e:
@@ -388,9 +392,9 @@ def validation():
 
 HOSTED = None  # hosted mode: the examples of an exported page (stored answers) plus live answers for uploads
 ACCESS_CODE = os.environ.get("STOA_ACCESS_CODE", "")
-BUDGET = float(os.environ.get("STOA_BUDGET_USD", "25"))  # the server stops calling models after this much API spend
+BUDGET = float(os.environ.get("STOA_BUDGET_USD", "50"))  # the server stops calling models after this much API spend
 SPENT = [0.0]
-LIMIT = {"ask": (int(os.environ.get("STOA_ASKS_PER_HOUR", "40")), 3600), "upload": (int(os.environ.get("STOA_UPLOADS_PER_HOUR", "10")), 3600)}  # per visitor address
+LIMIT = {"ask": (int(os.environ.get("STOA_ASKS_PER_HOUR", "800")), 3600), "upload": (int(os.environ.get("STOA_UPLOADS_PER_HOUR", "200")), 3600)}  # per visitor address
 _seen = collections.defaultdict(list)
 _rl = __import__("threading").Lock()
 

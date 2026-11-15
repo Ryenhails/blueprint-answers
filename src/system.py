@@ -71,17 +71,28 @@ def pick_page(full, question):
         tok, usd = a + b, g.usd
     except Exception:
         pass
+    return one_page(full, n), n, tok, usd
+
+
+def one_page(full, n):
+    """Page n (from 1) of a PDF as a one-page PDF, so every later step works on a single sheet."""
+    import fitz
+
     key = (full, n)
     if key not in _pages:
         import tempfile
 
+        doc = fitz.open(full)
+        if len(doc) <= 1:
+            return full
+        n = min(max(1, n), len(doc))
         one = fitz.open()
         one.insert_pdf(doc, from_page=n - 1, to_page=n - 1)
         fd, out = tempfile.mkstemp(prefix="stoa_page_", suffix="_p%d.pdf" % n)
         os.close(fd)
         one.save(out)
         _pages[key] = out
-    return _pages[key], n, tok, usd
+    return _pages[key]
 
 
 def big_sheet(full):
@@ -253,7 +264,7 @@ def facts_text(kind, full):
     return None, "exact"
 
 
-def ask(path, question, llm=None, table_llm=None, raster=None, agent=None, vision=None):
+def ask(path, question, llm=None, table_llm=None, raster=None, agent=None, vision=None, page=None):
     """path: relative to the dataset root (as in questions.jsonl) or absolute.
 
     Cheapest route first, a stronger one only when the cheaper one has no answer:
@@ -271,10 +282,14 @@ def ask(path, question, llm=None, table_llm=None, raster=None, agent=None, visio
         if twin:
             extra["read_from"] = os.path.basename(twin)
             path = full = twin
-    if full.lower().endswith(".pdf") and vision is not None:  # several sheets in one PDF: work on the sheet the question is about
+    if full.lower().endswith(".pdf") and page:  # the asker chose the sheet
+        full = one_page(full, int(page))
+        path, extra["page"] = full, int(page)
+    elif full.lower().endswith(".pdf") and vision is not None:  # several sheets in one PDF: work on the sheet the question is about
         full, page, ptok, pusd = pick_page(full, question)
         if page > 1 or ptok:
             path, extra["page"] = full, page
+            extra["page_picked"] = True
     kind = kind_of(path)
     res = {"answer": None, "kind": kind, "evidence": [], "calc": None, "plan": None, "plan_source": None, "llm_tokens": 0, "cost_usd": 0.0}
     res.update(extra)
