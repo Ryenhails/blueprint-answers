@@ -192,12 +192,12 @@ def _default_raster():
 STEP = ["Known question form", "Decision model", "Model writes code on the facts", "Model reads the sheet"]
 
 
-def _step(res, level, detail=None, answered=None):
+def _step(res, level, detail=None, answered=None, cost=None):
     """Record what one rung of the ladder did, for the answer-path display."""
     tr = res.setdefault("trace", [])
     spent = sum(t["cost_usd"] for t in tr)
     tr.append({"level": level, "name": STEP[level], "answered": (res.get("answer") is not None) if answered is None else answered,
-               "detail": detail, "cost_usd": round(max(0.0, res.get("cost_usd", 0.0) - spent), 6)})
+               "detail": detail, "cost_usd": round(max(0.0, res.get("cost_usd", 0.0) - spent), 6) if cost is None else cost})
 
 
 def _first(res, known, decision="it is not a single count or sum"):
@@ -206,7 +206,7 @@ def _first(res, known, decision="it is not a single count or sum"):
     if src in ("cache", "ingested", "keyword"):
         _step(res, 0, known)
     else:
-        _step(res, 0, "not a question form seen before", answered=False)
+        _step(res, 0, "not a question form seen before", answered=False, cost=0.0)  # looking up the cache costs nothing
         if src == "llm":
             op = (res.get("plan") or {}).get("op") or (res.get("plan") or {}).get("kind")
             _step(res, 1, "turned into the query '%s'; code computed the answer" % op if res.get("answer") is not None else "judged '%s': %s" % (op, decision))

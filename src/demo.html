@@ -20,6 +20,7 @@
   --accent: #6aa9ff; --accent-soft: #1c3355; --mark: #ff8a47; --meas: #4fd1a1; --ok: #58c98a; --ok-s: #143626; --bad: #ff8078; --bad-s: #45201d; --warn: #f0b055; --warn-s: #3a2c14; --sheet: #f4f6f8;
   --vec:#7fb2f2; --vec-s:#17304f; --bim:#5ec795; --bim-s:#143626; --tab:#f0b055; --tab-s:#3a2c14; --img:#c59af0; --img-s:#33234a; --vis:#f08a80; --vis-s:#45201d; color-scheme: dark }
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.45;
   padding-block: 12px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 12px }
@@ -110,6 +111,28 @@ details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; marg
 .evlist li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; border-radius: 3px; cursor: pointer }
 .evlist li:hover { background: var(--accent-soft) }
 .evlist b { font-family: var(--mono); font-weight: 400; font-variant-numeric: tabular-nums }
+/* guided flow: one thing to do at a time */
+.stepper { list-style: none; display: flex; gap: 0; margin: 0 0 8px; padding: 0; counter-reset: s; flex-wrap: wrap }
+.stepper li { flex: 1; min-width: 150px }
+.stepper button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 14px; background: var(--panel); border: 1px solid var(--line); border-right-width: 0; color: var(--muted) }
+.stepper li:first-child button { border-radius: 6px 0 0 6px } .stepper li:last-child button { border-right-width: 1px; border-radius: 0 6px 6px 0 }
+.stepper b { font-family: var(--mono); width: 26px; height: 26px; border-radius: 50%; border: 2px solid currentColor; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex: none }
+.stepper span { font-weight: 600; font-size: 13.5px }
+.stepper button[aria-current="step"] { background: var(--ink); color: var(--panel); border-color: var(--ink) }
+.stepper button.done { color: var(--ok) } .stepper button.done b { background: var(--ok); border-color: var(--ok); color: var(--panel) }
+.stepper button:disabled, .stepper button[disabled] { cursor: default; opacity: .55 }
+.guide { margin: 0 0 12px; padding: 10px 14px; background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 0 6px 6px 0; font-size: 14.5px }
+.guide b { font-weight: 600 }
+.start { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 12px; align-items: start }
+.work { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 12px; align-items: start }
+@media (max-width: 1000px) { .start, .work { grid-template-columns: minmax(0, 1fr) } }
+.start h3 { margin: 0 0 10px; font-size: 16px }
+.start .sheets { max-height: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 14px }
+.next { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line) }
+.next button { font: inherit; cursor: pointer; padding: 7px 14px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink) }
+.next button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 600 }
+#qbox summary { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 6px }
+#out:not(:empty) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line) }
 /* online: upload first, facts panel, session history */
 .drop { border: 2px dashed var(--accent); border-radius: 8px; padding: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--accent-soft) }
 .drop.over { background: var(--panel); border-style: solid }
@@ -165,40 +188,63 @@ td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space
 </div>
 
 <main id="v-ask">
-<div class="desk">
-  <section class="panel" aria-label="Drawings and questions">
-    <div class="drop" id="uploadbox"><label for="upfile"><b>Ask your own drawing</b></label>
-      <input id="code" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code" hidden>
-      <input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc">
-      <small id="upmsg">Drop a file here or choose one: PDF (any number of sheets), a scan or image, or an IFC model. It is read once into facts, then you can ask anything.</small></div>
-    <h2>Or pick an example, by how it is read</h2>
-    <div class="sheets" id="sheets"></div>
-    <h2 id="qhead">Example questions</h2>
-    <div class="qs" id="qs"></div>
-    <div id="histbox" hidden><h2 style="margin-top:12px">Asked in this session</h2><div class="qs hist" id="hist"></div></div>
-  </section>
+<ol class="stepper" id="stepper" aria-label="Steps">
+  <li><button type="button" data-s="1"><b>1</b><span>Choose a drawing</span></button></li>
+  <li><button type="button" data-s="2"><b>2</b><span>Check what was read</span></button></li>
+  <li><button type="button" data-s="3"><b>3</b><span>Ask a question</span></button></li>
+  <li><button type="button" data-s="4"><b>4</b><span>Check the answer</span></button></li>
+</ol>
+<p class="guide" id="guide" aria-live="polite"></p>
 
-  <section class="panel" aria-label="Drawing viewer">
-    <form class="ask" id="askform">
-      <input id="question" type="text" autocomplete="off" aria-label="Question" placeholder="Ask anything about this drawing, in any language">
-      <button type="submit" id="askbtn">Ask</button>
-    </form>
+<section id="s1" class="start">
+  <div class="panel">
+    <h3>Upload your own drawing</h3>
+    <div class="drop" id="uploadbox">
+      <label id="codelabel" for="code" hidden><b>1.</b> Enter the access code from the submission notes</label>
+      <input id="code" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code" hidden>
+      <label for="upfile"><b id="upnum"></b> Choose a file, or drop it here</label>
+      <input id="upfile" type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.ifc">
+      <small id="upmsg">PDF (any number of sheets), a scan or image, or an IFC model, up to 40 MB.</small></div>
+    <p class="note">The file is read once into a table of facts. That takes a few seconds for a PDF or a model and up to a minute for a large scan. It stays on this server only until the demo restarts.</p>
+  </div>
+  <div class="panel">
+    <h3>Or use an example</h3>
+    <p class="note">Grouped by how the drawing is read. Each comes with questions that have reference answers.</p>
+    <div class="sheets" id="sheets"></div>
+  </div>
+</section>
+
+<section id="s23" class="work" hidden>
+  <div class="panel" aria-label="Drawing">
     <div class="tools">
+      <b id="curtitle" style="font-size:13px"></b><span class="sp"></span>
+      <span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
       <button type="button" id="zin" aria-label="Zoom in">+</button>
       <button type="button" id="zout" aria-label="Zoom out">−</button>
       <button type="button" id="zfit">Fit</button>
-      <span id="chips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="sp"></span>
-      <small class="empty" id="hint">Scroll to zoom, drag to move.</small>
     </div>
     <div class="viewer" id="viewer"></div>
-  </section>
+    <small class="empty" id="hint">Scroll to zoom, drag to move.</small>
+  </div>
 
-  <section class="panel" aria-label="Answer and facts" aria-live="polite">
-    <div class="tabs" role="tablist"><button type="button" role="tab" id="tab-answer" aria-selected="true">Answer</button><button type="button" role="tab" id="tab-facts" aria-selected="false">Facts read from the drawing</button></div>
-    <div id="out"><p class="empty">Pick a question on the left, or type your own.</p></div>
-    <div id="facts" hidden><p class="empty">Pick a drawing.</p></div>
-  </section>
-</div>
+  <div class="panel" aria-live="polite">
+    <div id="side-facts">
+      <h2>What was read from this drawing</h2>
+      <div id="facts"><p class="empty">Pick a drawing.</p></div>
+      <div class="next"><button type="button" class="primary" id="tostep3">Continue: ask a question →</button></div>
+    </div>
+    <div id="side-ask" hidden>
+      <form class="ask" id="askform">
+        <input id="question" type="text" autocomplete="off" aria-label="Question" placeholder="Ask anything about this drawing, in any language">
+        <button type="submit" id="askbtn">Ask</button>
+      </form>
+      <details id="qbox" open><summary id="qhead">Example questions</summary><div class="qs" id="qs"></div></details>
+      <div id="out"></div>
+      <div id="histbox" hidden><h2 style="margin-top:14px">Asked in this session</h2><div class="qs hist" id="hist"></div></div>
+      <div class="next"><button type="button" id="tostep2">← What was read</button><button type="button" id="tostep1">Choose another drawing</button></div>
+    </div>
+  </div>
+</section>
 </main>
 
 <main id="v-how" class="doc" hidden>
@@ -320,11 +366,34 @@ const history = {};  // path -> [{ q, res }]
 function renderHistory() {
   const h = (cur && history[cur.path]) || [];
   $("histbox").hidden = !h.length; $("hist").innerHTML = "";
-  h.slice().reverse().forEach(it => { const b = document.createElement("button"); b.type = "button"; b.textContent = it.q + (it.res.answer != null ? "  →  " + String(it.res.answer).slice(0, 40) : ""); b.onclick = () => { $("question").value = it.q; showTab("answer"); showResult(it.res, it.q); }; $("hist").appendChild(b); });
+  h.slice().reverse().forEach(it => { const b = document.createElement("button"); b.type = "button"; b.textContent = it.q + (it.res.answer != null ? "  →  " + String(it.res.answer).slice(0, 40) : ""); b.onclick = () => { $("question").value = it.q; showResult(it.res, it.q); setStep(4); }; $("hist").appendChild(b); });
 }
-function showTab(name) {
-  $("out").hidden = name !== "answer"; $("facts").hidden = name !== "facts";
-  $("tab-answer").setAttribute("aria-selected", name === "answer"); $("tab-facts").setAttribute("aria-selected", name === "facts");
+const GUIDE = [
+  "<b>Step 1 of 4 · Choose a drawing.</b> Upload your own, or pick one of the examples on the right.",
+  "<b>Step 2 of 4 · Check what was read.</b> The drawing has been read once into a table of facts. Point at a row to see it on the drawing, click to zoom there. When it looks right, continue.",
+  "<b>Step 3 of 4 · Ask a question</b>, in any language. Type your own or pick one from the list.",
+  "<b>Step 4 of 4 · Check the answer.</b> It shows which steps produced it, what it rests on and what it cost. Point at an evidence line to see it on the drawing. Then ask another question, or choose another drawing.",
+];
+let step = 1;
+function setStep(n) {
+  step = n;
+  $("s1").hidden = n !== 1; $("s23").hidden = n === 1;
+  $("side-facts").hidden = n !== 2; $("side-ask").hidden = n < 3;
+  $("guide").innerHTML = GUIDE[n - 1];
+  $("stepper").querySelectorAll("button").forEach(b => {
+    const s = +b.dataset.s;
+    b.classList.toggle("done", s < n); s === n ? b.setAttribute("aria-current", "step") : b.removeAttribute("aria-current");
+    b.disabled = (s > 1 && !cur) || (s === 4 && !lastRes);
+  });
+  if (n === 2 && svgEl) { const g = svgEl.querySelector("#evg"); if (g) g.innerHTML = ""; $("chips").innerHTML = ""; }
+  if (n === 3) { $("qbox").open = true; $("question").focus(); }
+  if (n >= 3 && lastRes && svgEl) drawEvidence(lastRes);
+}
+function showTab(name) { if (name === "facts") setStep(2); }
+async function choose(ex) {
+  cur = ex; lastRes = null; $("out").innerHTML = ""; $("question").value = ""; $("curtitle").textContent = ex.title;
+  setStep(2);
+  await loadDrawing(ex);
 }
 async function loadFacts(ex) {
   const el = $("facts");
@@ -342,7 +411,7 @@ async function loadFacts(ex) {
     const r = groups[tr.dataset.g].rows[tr.dataset.r];
     tr.onmouseenter = () => factMark(r); tr.onmouseleave = () => factMark(null); tr.onclick = () => zoomTo(r.bbox);
   });
-  if (ex.uploaded) { showTab("facts"); $("upmsg").textContent = "Read. The facts are on the right; ask a question above the drawing."; }
+  if (ex.uploaded) $("upmsg").textContent = "PDF (any number of sheets), a scan or image, or an IFC model, up to 40 MB.";
 }
 function factMark(r) {
   if (!svgEl) return;
@@ -352,7 +421,8 @@ function factMark(r) {
   g.insertAdjacentHTML("beforeend", r.poly && r.poly.length > 2 ? `<polygon class="ev fact" points="${r.poly.map(p => p.join(",")).join(" ")}"/>`
     : `<rect class="ev fact" x="${r.bbox[0] - pad}" y="${r.bbox[1] - pad}" width="${r.bbox[2] - r.bbox[0] + 2 * pad}" height="${r.bbox[3] - r.bbox[1] + 2 * pad}"/>`);
 }
-$("tab-answer").onclick = () => showTab("answer"); $("tab-facts").onclick = () => showTab("facts");
+$("stepper").querySelectorAll("button").forEach(b => b.onclick = () => { if (!b.disabled) setStep(+b.dataset.s); });
+$("tostep3").onclick = () => setStep(3); $("tostep2").onclick = () => setStep(2); $("tostep1").onclick = () => setStep(1);
 
 const evGroup = e => e.kind === "measured" ? "Measured by code" : e.kind === "counted" ? "Counted: " + e.name : e.kind === "model box" ? "Pointed at by the model" : e.kind === "table_row" ? "Schedule rows" : (e.kind || "evidence").replace(/_/g, " ");
 const evClass = e => e.kind === "measured" ? (e.poly && e.poly.length === 2 ? "line" : "meas") : (e.kind === "room" || e.kind === "table_row" || e.kind === "space") ? "" : "sym";
@@ -448,11 +518,11 @@ function showResult(res, q) {
 async function ask(q) {
   if (!cur || !q.trim()) return;
   $("qs").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.textContent === q));
-  $("out").innerHTML = '<p class="empty">Working…</p>';
+  $("out").innerHTML = '<p class="empty">Working… a new kind of question on a scan can take up to a minute.</p>';
+  $("qbox").open = false;
   const busy = document.createElement("div"); busy.className = "busy"; busy.textContent = "Answering…"; $("viewer").appendChild(busy);
-  showTab("answer");
   const at = cur;
-  try { const res = await api.ask(cur.path, q); (history[at.path] = history[at.path] || []).push({ q, res }); if (cur === at) { showResult(res, q); renderHistory(); } } catch (e) { showResult({ error: String(e) }, q); }
+  try { const res = await api.ask(cur.path, q); (history[at.path] = history[at.path] || []).push({ q, res }); if (cur === at) { showResult(res, q); renderHistory(); setStep(4); } } catch (e) { showResult({ error: String(e) }, q); }
   busy.remove();
 }
 
@@ -484,12 +554,12 @@ function addSheet(ex) {
   const b = document.createElement("button");
   b.type = "button"; b.dataset.path = ex.path; b.setAttribute("aria-pressed", "false");
   b.innerHTML = esc(ex.title) + (ex.uploaded ? '<span class="tag">uploaded</span>' : "");
-  b.onclick = () => loadDrawing(ex).then(() => { $("out").innerHTML = '<p class="empty">Pick a question on the left, or type your own.</p>'; showTab(ex.questions.length ? "answer" : "facts"); });
+  b.onclick = () => choose(ex);
   grp.appendChild(b);
   return b;
 }
 if (!live) { $("upfile").disabled = true; $("upmsg").textContent = "Upload works in the live demo (link in the repository); this published copy shows stored answers."; }
-$("code").hidden = !NEEDS_CODE;
+$("code").hidden = !NEEDS_CODE; $("codelabel").hidden = !NEEDS_CODE; $("upnum").textContent = NEEDS_CODE ? "2." : "";
 const drop = $("uploadbox");
 ["dragenter", "dragover"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove("over"); }));
@@ -501,8 +571,8 @@ async function upload(f) {
   try {
     const ex = await (await fetch("/api/upload", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name), ...headers() }, body: f })).json();
     if (ex.error) { $("upmsg").textContent = ex.error; return; }
-    $("upmsg").textContent = "Uploaded. Reading it into facts…";
-    examples.push(ex); addSheet(ex).click();
+    $("upmsg").textContent = "Uploaded.";
+    examples.push(ex); addSheet(ex); choose(ex);
   } catch (err) { $("upmsg").textContent = "Upload failed: " + err; }
 }
 
@@ -550,10 +620,6 @@ window.addEventListener("hashchange", route); route();
 (async function start() {
   examples = await api.examples();
   examples.forEach(addSheet);
-  if (examples.length) {
-    await loadDrawing(examples[0]);
-    const q = examples[0].questions.find(x => /apartment [A-Z]|appartement [A-Z]/.test(x.q)) || examples[0].questions[0];
-    if (q) { $("question").value = q.q; ask(q.q); }
-  }
+  setStep(1);
 })();
 </script>
