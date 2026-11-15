@@ -5,17 +5,18 @@ drawings, run the server in hosted mode. It serves the same stored examples and 
 
 ```bash
 docker build -t blueprint-answers .
-docker run -p 7860:7860 -e GEMINI_API_KEY=... -e STOA_ACCESS_CODE=choose-a-code blueprint-answers
+docker run -p 7860:7860 -e GEMINI_API_KEY=... blueprint-answers
 ```
 
-- `STOA_ACCESS_CODE`: uploads and live questions are refused without this code, so a public URL cannot spend the API key.
+- Open by default, with limits per visitor address: `STOA_ASKS_PER_HOUR` (default 40) and `STOA_UPLOADS_PER_HOUR` (default 10).
+- `STOA_ACCESS_CODE` (optional): when set, uploads and live questions also need this code.
 - `STOA_BUDGET_USD` (default 25): the server stops calling models after this much API spend since it started.
 - Uploaded files stay in a temporary folder of the container and are gone when it restarts.
 
 ## Hugging Face Space
 
 1. Create a Space with the Docker SDK.
-2. In the Space settings add the secrets `GEMINI_API_KEY` and `STOA_ACCESS_CODE`.
+2. In the Space settings add the secret `GEMINI_API_KEY`.
 3. Push this repository to the Space, with `deploy/space_README.md` as its `README.md`:
 
 ```bash

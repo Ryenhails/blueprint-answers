@@ -334,6 +334,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(json.dumps({"error": "Enter the access code to read an uploaded drawing."}))
                 elif SPENT[0] >= BUDGET:
                     self._send(json.dumps({"error": "This demo has used up its API budget for now."}))
+                elif limited(self, "ask"):
+                    self._send(json.dumps({"error": "Too many requests from this address in the last hour. Try again later."}))
                 else:
                     f = facts(p)
                     SPENT[0] += f.get("cost_usd") or 0
@@ -353,6 +355,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         if SPENT[0] >= BUDGET:
             self._send(json.dumps({"error": "This demo has used up its API budget for now. The stored examples still work.", "answer": None}), code=200)
+            return
+        wait = limited(self, "upload" if self.path.startswith("/api/upload") else "ask")
+        if wait:
+            self._send(json.dumps({"error": wait, "answer": None}))
             return
         if self.path.startswith("/api/upload"):
             try:
@@ -384,6 +390,26 @@ HOSTED = None  # hosted mode: the examples of an exported page (stored answers) 
 ACCESS_CODE = os.environ.get("STOA_ACCESS_CODE", "")
 BUDGET = float(os.environ.get("STOA_BUDGET_USD", "25"))  # the server stops calling models after this much API spend
 SPENT = [0.0]
+LIMIT = {"ask": (int(os.environ.get("STOA_ASKS_PER_HOUR", "40")), 3600), "upload": (int(os.environ.get("STOA_UPLOADS_PER_HOUR", "10")), 3600)}  # per visitor address
+_seen = collections.defaultdict(list)
+_rl = __import__("threading").Lock()
+
+
+def limited(handler, kind):
+    """Rate limit per visitor (hosted mode only). -> message when the visitor has to wait, else None."""
+    if HOSTED is None:
+        return None
+    import time
+
+    who = (handler.headers.get("X-Forwarded-For") or handler.client_address[0]).split(",")[0].strip()
+    n, window = LIMIT[kind]
+    now = time.time()
+    with _rl:
+        q = _seen[(who, kind)] = [t for t in _seen[(who, kind)] if now - t < window]
+        if len(q) >= n:
+            return "This demo allows %d %s per hour from one address. Try again in %d minutes; the stored examples keep working." % (n, "uploads" if kind == "upload" else "live questions", int((window - (now - q[0])) / 60) + 1)
+        q.append(now)
+    return None
 
 
 def page_html(static, live=False):

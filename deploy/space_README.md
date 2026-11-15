@@ -13,4 +13,4 @@ Blueprint Answers: ask a construction drawing a question. Source and documentati
 https://github.com/Ryenhails/blueprint-answers
 
 This Space shows stored examples and answers questions live for drawings you upload (PDF, image or IFC).
-Uploading needs the access code from the submission notes.
+Video: https://www.youtube.com/watch?v=AjSBnnXv8GM

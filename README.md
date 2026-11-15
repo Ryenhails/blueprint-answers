@@ -5,8 +5,8 @@
 Entry for the Stoa challenge "Make Blueprints Talk", Junction 2026.
 
 - Demo (stored answers, runs in the browser): https://ryenhails.github.io/blueprint-answers/
-- Live demo with upload (access code in the submission notes): https://huggingface.co/spaces/Ryenhails/blueprint-answers
-- Two-minute video: <!--VIDEO-->
+- Live demo, upload your own drawing: https://huggingface.co/spaces/Ryenhails/blueprint-answers
+- Two-minute video: https://www.youtube.com/watch?v=AjSBnnXv8GM
 
 ## The idea
 
