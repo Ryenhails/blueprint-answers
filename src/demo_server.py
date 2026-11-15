@@ -226,10 +226,10 @@ def facts(path, page=1):
     if kind == "table":
         import table_adapter
 
-        raw = table_adapter.parse(full)
+        raw = table_adapter.parse_safe(full)
         ts = table_adapter.structured(raw)
         out["summary"] = [["tables", len(ts)], ["rows", sum(len(t["rows"]) for t in ts)]]
-        out["note"] = "Schedules lifted from the PDF's text layer. Exact text; anything drawn on the sheet is read per question." if ts else "No schedules on this sheet: it is read per question, with code measuring and counting."
+        out["note"] = "Schedules lifted from the PDF's text layer. Exact text; anything drawn on the sheet is read per question." if ts else ("Table extraction took too long on this sheet (very many vector paths), so it is read per question." if raw.get("skipped") else "No schedules on this sheet: it is read per question, with code measuring and counting.")
         for ti, t in enumerate(ts[:12]):
             bbs = raw["tables"][ti].get("row_bboxes", [])
             out["groups"].append({"name": (t.get("title") or "Table %d" % (ti + 1))[:60], "columns": [str(c)[:22] for c in t["columns"][:8]],

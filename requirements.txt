@@ -1,5 +1,5 @@
 # Python 3.10+
-pymupdf>=1.24
+pymupdf==1.24.14
 pillow>=10
 numpy>=1.26
 opencv-python-headless>=4.9

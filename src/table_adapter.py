@@ -61,6 +61,18 @@ def parse(pdf_path, page_no=0):
     return {"tables": out, "page_rect": list(page.rect)}
 
 
+def parse_safe(pdf_path, timeout=45):
+    """parse() in a separate process with a time limit. A sheet with a hundred thousand vector paths can keep the table
+    finder busy for minutes; then the sheet is treated as having no schedules and is read per question instead."""
+    import subprocess
+
+    try:
+        out = subprocess.run([sys.executable, os.path.abspath(__file__), "parse-json", pdf_path], capture_output=True, timeout=timeout)
+        return json.loads(out.stdout.decode("utf-8"))
+    except Exception:
+        return {"tables": [], "page_rect": None, "skipped": "table extraction took too long on this sheet"}
+
+
 def structure(t):
     """Raw rows -> (title, column names, data rows as dicts, original row index of each data row).
     Handles a title row and one- or two-level headers (a parent header cell spans the empty cells after it)."""
@@ -297,9 +309,9 @@ def make_table_llm(model_id):
     cache = {}
 
     def f(full, question):
-        with _PARSE:  # PyMuPDF is not safe to use from several threads at once
+        with _PARSE:  # one sheet at a time
             if full not in cache:
-                cache[full] = parse(full)
+                cache[full] = parse_safe(full)
         if not cache[full].get("tables"):  # a sheet without schedules: nothing to compute on, the caller reads the sheet
             return {"answer": None, "unit": None, "evidence": [], "plan": {"op": "no tables on this sheet"}, "plan_source": None, "llm_tokens": 0, "cost_usd": 0.0}
         before = model.usd
@@ -354,6 +366,10 @@ def test(model_ids):
         gc.collect()
         torch.cuda.empty_cache()
 
+
+if __name__ == "__main__" and sys.argv[1:2] == ["parse-json"]:
+    sys.stdout.write(json.dumps(parse(sys.argv[2])))
+    sys.exit(0)
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["show"]:
