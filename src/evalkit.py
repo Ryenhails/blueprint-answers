@@ -16,6 +16,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # the repository
 DATA = os.environ.get("STOA_DATA", os.path.join(ROOT, "data", "junction-dataset"))  # the challenge dataset (not in the repository)
 DEV = os.path.join(ROOT, "data", "dev500.jsonl")
+try:  # stored readings of drawings go here; the folder is missing in a fresh container
+    os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
+except OSError:
+    pass
 SEED = 20261113
 # (source, type) -> number of questions; one question per drawing where possible
 ALLOC = {

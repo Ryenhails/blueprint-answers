@@ -7,6 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
 COPY docs/index.html ./docs/index.html
+RUN mkdir -p /app/data && chmod -R 777 /app/data
 ENV PORT=7860 STOA_BUDGET_USD=25 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 EXPOSE 7860
 CMD ["python", "src/demo_server.py", "serve", "--gemini", "--hosted", "docs/index.html"]
